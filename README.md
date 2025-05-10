@@ -17,7 +17,7 @@ This Node.js + TypeScript server handles user authentication, workout generation
 ## 📁 Project Structure
 
 ```
-/backend
+/Backend
   /controllers
   /routes
   /services
