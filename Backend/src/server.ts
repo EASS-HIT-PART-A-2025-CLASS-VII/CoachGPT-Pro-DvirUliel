@@ -13,11 +13,14 @@ app.use(cors());
 app.use(express.json());
 
 // Mounting the routes
-app.use('/plan', planRoutes);
-app.use('/exercises', exerciseRoutes);
-app.use('/auth', authRoutes);
+app.use('/api/plan', planRoutes);
+app.use('/api/exercises', exerciseRoutes);
+app.use('/api/auth', authRoutes);
 
 const PORT = process.env.PORT || 5002;
 app.listen(PORT, () => {
   console.log(`Workout Plan Service running at http://localhost:${PORT}`);
 });
+
+// for testing
+export default app;
