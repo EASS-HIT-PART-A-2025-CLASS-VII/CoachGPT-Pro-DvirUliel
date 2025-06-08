@@ -1,7 +1,5 @@
 import { Request, Response } from 'express';
-import { pool } from '../db/db';
-import { QueryResult } from 'pg';
-import {
+import { 
   isValidUUID,
   findWeek,
   findDayByMuscleGroup,
@@ -9,89 +7,58 @@ import {
   addExerciseToDay,
   deleteExerciseFromDay
 } from '../utils/planUtils';
+import { sendError, sendSuccess } from '../utils/responseUtils';
+import { getRandomExercises, swapExerciseInPlan } from '../utils/exerciseUtils';
+import { getPlanFromDB, updatePlanInDB, logAction } from '../utils/databaseUtils';
+import { capitalize } from '../utils/stringUtils';
+import { MUSCLE_SPLIT, DIFFICULTY_CONFIG } from '../utils/constants';
+import { pool } from '../db/db';
 
-// ✅ Predefined weekly muscle split
-const muscleGroupsByDay = [
-  ['chest', 'triceps'],
-  ['back', 'biceps'],
-  ['legs', 'core'],
-  ['shoulders', 'core']
-];
-
-// ✅ Generate a full workout plan
+// Generate a full workout plan
 export const generatePlan = async (req: Request, res: Response): Promise<void> => {
   try {
     const { userId, goal, daysPerWeek, difficultyLevel } = req.body;
 
+    // Validation
     if (!userId || !goal || !daysPerWeek || !difficultyLevel) {
-      res.status(400).json({ error: 'Missing required fields' });
-      return;
+      return sendError(res, 400, 'Missing required fields');
+    }
+    if (!isValidUUID(userId)) {
+      return sendError(res, 400, 'Invalid userId format');
     }
 
-    if (!isValidUUID(userId)) {
-      res.status(400).json({ error: 'Invalid userId format' });
-      return;
+    // Get configuration for difficulty level
+    const baseConfig = DIFFICULTY_CONFIG[difficultyLevel as keyof typeof DIFFICULTY_CONFIG];
+    if (!baseConfig) {
+      return sendError(res, 400, 'Invalid difficulty level');
     }
 
     const weeks = [];
 
-    let baseSets = 3;
-    let baseReps = 12;
-
-    if (difficultyLevel === 'intermediate') {
-      baseReps = 10;
-    } else if (difficultyLevel === 'advanced') {
-      baseSets = 4;
-      baseReps = 8;
-    }
-
     for (let week = 1; week <= 4; week++) {
       const days = [];
-
-      let sets = baseSets;
-      let reps = baseReps;
-
+      
+      // Progressive overload logic
+      let { sets, reps } = baseConfig;
       if (week === 2) reps += 1;
       else if (week === 3) sets += 1;
       else if (week === 4) reps += 1;
 
       for (let day = 0; day < daysPerWeek; day++) {
-        const [primaryMuscle, secondaryMuscle] = muscleGroupsByDay[day % muscleGroupsByDay.length];
+        const [primary, secondary] = MUSCLE_SPLIT[day % MUSCLE_SPLIT.length];
 
-        const primaryExercisesResult: QueryResult = await pool.query(
-          'SELECT name FROM exercises WHERE difficulty = $1 AND muscle_group = $2 ORDER BY RANDOM() LIMIT 3',
-          [difficultyLevel, primaryMuscle]
-        );
+        // Get exercises for both muscle groups
+        const [primaryExercises, secondaryExercises] = await Promise.all([
+          getRandomExercises(primary, difficultyLevel, 3, sets, reps),
+          getRandomExercises(secondary, difficultyLevel, 2, sets, reps)
+        ]);
 
-        const primaryExercises = primaryExercisesResult.rows.map(row => ({
-          name: row.name,
-          sets,
-          reps
-        }));
-
-        if (primaryExercises.length < 3) {
-          res.status(400).json({ error: `Not enough exercises for ${primaryMuscle} at ${difficultyLevel} level` });
-          return;
-        }
-
-        const secondaryExercisesResult: QueryResult = await pool.query(
-          'SELECT name FROM exercises WHERE difficulty = $1 AND muscle_group = $2 ORDER BY RANDOM() LIMIT 2',
-          [difficultyLevel, secondaryMuscle]
-        );
-
-        const secondaryExercises = secondaryExercisesResult.rows.map(row => ({
-          name: row.name,
-          sets,
-          reps
-        }));
-
-        if (secondaryExercises.length < 2) {
-          res.status(400).json({ error: `Not enough exercises for ${secondaryMuscle} at ${difficultyLevel} level` });
-          return;
+        if (primaryExercises.length < 3 || secondaryExercises.length < 2) {
+          return sendError(res, 400, `Not enough exercises for ${primary}/${secondary} at ${difficultyLevel} level`);
         }
 
         days.push({
-          day: `Day ${day + 1} - ${primaryMuscle.charAt(0).toUpperCase() + primaryMuscle.slice(1)} + ${secondaryMuscle.charAt(0).toUpperCase() + secondaryMuscle.slice(1)}`,
+          day: `Day ${day + 1} - ${capitalize(primary)} + ${capitalize(secondary)}`,
           exercises: [...primaryExercises, ...secondaryExercises]
         });
       }
@@ -99,32 +66,26 @@ export const generatePlan = async (req: Request, res: Response): Promise<void> =
       weeks.push({ week, days });
     }
 
-    const plan = { weeks };
-
+    // Save plan to database
     const result = await pool.query(
       'INSERT INTO workout_plans (user_id, goal, days_per_week, plan_data) VALUES ($1, $2, $3, $4) RETURNING *',
-      [userId, goal, daysPerWeek, plan]
+      [userId, goal, daysPerWeek, { weeks }]
     );
 
-    res.status(201).json({
-      status: 'success',
-      plan: result.rows[0]
-    });
-
+    sendSuccess(res, { plan: result.rows[0] }, 201);
   } catch (error) {
     console.error('Error generating plan:', error);
-    res.status(500).json({ error: 'Server error while generating plan' });
+    sendError(res, 500, 'Server error while generating plan');
   }
 };
 
-// ✅ Get the latest workout plan for a user
+// Get latest workout plan for a user
 export const getPlanByUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const { userId } = req.params;
 
     if (!isValidUUID(userId)) {
-      res.status(400).json({ error: 'Invalid userId format' });
-      return;
+      return sendError(res, 400, 'Invalid userId format');
     }
 
     const result = await pool.query(
@@ -133,262 +94,177 @@ export const getPlanByUser = async (req: Request, res: Response): Promise<void> 
     );
 
     if (result.rows.length === 0) {
-      res.status(404).json({ error: 'No plan found for this user' });
-      return;
+      return sendError(res, 404, 'No plan found for this user');
     }
 
     res.json(result.rows[0]);
-  } catch (err) {
-    console.error('getPlanByUser error:', err);
-    res.status(500).json({ error: 'Server error' });
+  } catch (error) {
+    console.error('getPlanByUser error:', error);
+    sendError(res, 500, 'Server error');
   }
 };
 
-// ✅ Get a workout plan by ID
+// Get workout plan by ID
 export const getPlanById = async (req: Request, res: Response): Promise<void> => {
   try {
     const { planId } = req.params;
-
-    const result = await pool.query(
-      'SELECT * FROM workout_plans WHERE id = $1',
-      [planId]
-    );
+    const result = await pool.query('SELECT * FROM workout_plans WHERE id = $1', [planId]);
 
     if (result.rows.length === 0) {
-      res.status(404).json({ error: 'Workout plan not found' });
-      return;
+      return sendError(res, 404, 'Workout plan not found');
     }
 
-    res.status(200).json({
-      status: 'success',
-      plan: result.rows[0]
-    });
+    sendSuccess(res, { plan: result.rows[0] });
   } catch (error) {
     console.error('Error fetching plan by ID:', error);
-    res.status(500).json({ error: 'Server error fetching workout plan' });
+    sendError(res, 500, 'Server error fetching workout plan');
   }
 };
 
-// ✅ Swap exercises
+// Swap exercises in plan
 export const swapExercise = async (req: Request, res: Response): Promise<void> => {
   try {
     const { planId } = req.params;
     const { currentExercise, newExercise, weekNumber } = req.body;
 
     if (!planId || !currentExercise || !newExercise) {
-      res.status(400).json({ error: 'Missing required fields' });
-      return;
+      return sendError(res, 400, 'Missing required fields');
     }
 
-    const planResult = await pool.query('SELECT * FROM workout_plans WHERE id = $1', [planId]);
-    if (planResult.rows.length === 0) {
-      res.status(404).json({ error: 'Workout plan not found' });
-      return;
-    }
+    const plan = await getPlanFromDB(planId);
+    if (!plan) return sendError(res, 404, 'Workout plan not found');
 
-    let planData = planResult.rows[0].plan_data;
-    let modified = false;
-    let skippedWeeks: number[] = [];
-
-    planData.weeks.forEach((week: any) => {
-      if (weekNumber && week.week !== weekNumber) return;
-
-      if (week.days.some((day: any) => exerciseExistsInDay(day, newExercise))) {
-        skippedWeeks.push(week.week);
-        return;
-      }
-
-      week.days.forEach((day: any) => {
-        day.exercises = day.exercises.map((exercise: any) => {
-          const exerciseName = typeof exercise === 'string' ? exercise : exercise.name;
-          if (exerciseName.toLowerCase() === currentExercise.toLowerCase()) {
-            modified = true;
-            if (typeof exercise === 'string') {
-              return newExercise;
-            } else {
-              return {
-                ...exercise,
-                name: newExercise
-              };
-            }
-          }
-          return exercise;
-        });
-      });
-    });
+    const { planData, modified, skippedWeeks } = swapExerciseInPlan(
+      plan.plan_data, 
+      currentExercise, 
+      newExercise, 
+      weekNumber
+    );
 
     if (!modified) {
-      res.status(404).json({ error: 'Exercise to replace not found in the plan' });
-      return;
+      return sendError(res, 404, 'Exercise to replace not found in the plan');
     }
 
-    const updateResult = await pool.query('UPDATE workout_plans SET plan_data = $1 WHERE id = $2 RETURNING *', [planData, planId]);
-    await pool.query('INSERT INTO plan_actions (plan_id, action_type, old_exercise, new_exercise, week_number) VALUES ($1, $2, $3, $4, $5)', [planId, 'swap', currentExercise, newExercise, weekNumber || null]);
+    const updatedPlan = await updatePlanInDB(planId, planData);
+    await logAction(planId, 'swap', currentExercise, newExercise, weekNumber);
 
-    res.status(200).json({
-      status: 'success',
-      message: skippedWeeks.length > 0 ? `Swap completed. Skipped weeks: ${skippedWeeks.join(', ')}` : 'Swap completed successfully.',
-      updatedPlan: updateResult.rows[0]
-    });
+    const message = skippedWeeks.length > 0 
+      ? `Swap completed. Skipped weeks: ${skippedWeeks.join(', ')}` 
+      : 'Swap completed successfully.';
 
+    sendSuccess(res, { message, updatedPlan });
   } catch (error) {
     console.error('Error swapping exercise:', error);
-    res.status(500).json({ error: 'Server error while swapping exercise' });
+    sendError(res, 500, 'Server error while swapping exercise');
   }
 };
 
-// ✅ Delete a full workout plan by ID
-export const deletePlan = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { planId } = req.params;
-
-    if (!planId) {
-      res.status(400).json({ error: 'Missing planId' });
-      return;
-    }
-
-    const deleteResult = await pool.query('DELETE FROM workout_plans WHERE id = $1 RETURNING *', [planId]);
-    if (deleteResult.rows.length === 0) {
-      res.status(404).json({ error: 'Workout plan not found' });
-      return;
-    }
-
-    res.status(200).json({
-      status: 'success',
-      message: 'Workout plan deleted successfully.',
-      deletedPlan: deleteResult.rows[0]
-    });
-
-  } catch (error) {
-    console.error('Error deleting plan:', error);
-    res.status(500).json({ error: 'Server error while deleting plan' });
-  }
-};
-
-// ✅ Add a new exercise
+// Add exercise to plan
 export const addExerciseToPlan = async (req: Request, res: Response): Promise<void> => {
   try {
     const { planId } = req.params;
     const { weekNumber, muscleGroup, newExercise } = req.body;
 
     if (!planId || !weekNumber || !muscleGroup || !newExercise) {
-      res.status(400).json({ error: 'Missing required fields' });
-      return;
+      return sendError(res, 400, 'Missing required fields');
     }
 
-    const planResult = await pool.query('SELECT * FROM workout_plans WHERE id = $1', [planId]);
-    if (planResult.rows.length === 0) {
-      res.status(404).json({ error: 'Workout plan not found' });
-      return;
-    }
+    const plan = await getPlanFromDB(planId);
+    if (!plan) return sendError(res, 404, 'Workout plan not found');
 
-    const planData = planResult.rows[0].plan_data;
-    const week = findWeek(planData, weekNumber);
-
-    if (!week) {
-      res.status(404).json({ error: 'Week not found' });
-      return;
-    }
+    const week = findWeek(plan.plan_data, weekNumber);
+    if (!week) return sendError(res, 404, 'Week not found');
 
     const day = findDayByMuscleGroup(week, muscleGroup);
-    if (!day) {
-      res.status(404).json({ error: `No day found for muscle group: ${muscleGroup}` });
-      return;
-    }
+    if (!day) return sendError(res, 404, `No day found for muscle group: ${muscleGroup}`);
 
     if (exerciseExistsInDay(day, newExercise)) {
-      res.status(400).json({ error: 'Exercise already exists in the day' });
-      return;
+      return sendError(res, 400, 'Exercise already exists in the day');
     }
 
     addExerciseToDay(day, newExercise);
 
-    const updateResult = await pool.query('UPDATE workout_plans SET plan_data = $1 WHERE id = $2 RETURNING *', [planData, planId]);
-    await pool.query('INSERT INTO plan_actions (plan_id, action_type, new_exercise, week_number, day_name) VALUES ($1, $2, $3, $4, $5)', [planId, 'add', newExercise, weekNumber, day.day]);
+    const updatedPlan = await updatePlanInDB(planId, plan.plan_data);
+    await logAction(planId, 'add', null, newExercise, weekNumber, day.day);
 
-    res.status(200).json({
-      status: 'success',
+    sendSuccess(res, {
       message: `Exercise added successfully to ${day.day}.`,
-      updatedPlan: updateResult.rows[0]
+      updatedPlan
     });
-
   } catch (error) {
     console.error('Error adding exercise:', error);
-    res.status(500).json({ error: 'Server error while adding exercise' });
+    sendError(res, 500, 'Server error while adding exercise');
   }
 };
 
-// ✅ Delete an exercise
+// Delete exercise from plan
 export const deleteExerciseFromPlan = async (req: Request, res: Response): Promise<void> => {
   try {
     const { planId } = req.params;
     const { weekNumber, muscleGroup, exerciseToDelete } = req.body;
 
     if (!planId || !weekNumber || !muscleGroup || !exerciseToDelete) {
-      res.status(400).json({ error: 'Missing required fields' });
-      return;
+      return sendError(res, 400, 'Missing required fields');
     }
 
-    const planResult = await pool.query('SELECT * FROM workout_plans WHERE id = $1', [planId]);
-    if (planResult.rows.length === 0) {
-      res.status(404).json({ error: 'Workout plan not found' });
-      return;
-    }
+    const plan = await getPlanFromDB(planId);
+    if (!plan) return sendError(res, 404, 'Workout plan not found');
 
-    const planData = planResult.rows[0].plan_data;
-    const week = findWeek(planData, weekNumber);
-
-    if (!week) {
-      res.status(404).json({ error: 'Week not found' });
-      return;
-    }
+    const week = findWeek(plan.plan_data, weekNumber);
+    if (!week) return sendError(res, 404, 'Week not found');
 
     const day = findDayByMuscleGroup(week, muscleGroup);
-    if (!day) {
-      res.status(404).json({ error: `No day found for muscle group: ${muscleGroup}` });
-      return;
-    }
+    if (!day) return sendError(res, 404, `No day found for muscle group: ${muscleGroup}`);
 
     const deleted = deleteExerciseFromDay(day, exerciseToDelete);
-    if (!deleted) {
-      res.status(404).json({ error: 'Exercise not found in the day' });
-      return;
-    }
+    if (!deleted) return sendError(res, 404, 'Exercise not found in the day');
 
-    const updateResult = await pool.query('UPDATE workout_plans SET plan_data = $1 WHERE id = $2 RETURNING *', [planData, planId]);
-    await pool.query('INSERT INTO plan_actions (plan_id, action_type, old_exercise, week_number, day_name) VALUES ($1, $2, $3, $4, $5)', [planId, 'delete', exerciseToDelete, weekNumber, day.day]);
+    const updatedPlan = await updatePlanInDB(planId, plan.plan_data);
+    await logAction(planId, 'delete', exerciseToDelete, null, weekNumber, day.day);
 
-    res.status(200).json({
-      status: 'success',
+    sendSuccess(res, {
       message: `Exercise deleted successfully from ${day.day}.`,
-      updatedPlan: updateResult.rows[0]
+      updatedPlan
     });
-
   } catch (error) {
     console.error('Error deleting exercise:', error);
-    res.status(500).json({ error: 'Server error while deleting exercise' });
+    sendError(res, 500, 'Server error while deleting exercise');
   }
 };
 
-// ✅ Get full action history
+// Delete full workout plan
+export const deletePlan = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { planId } = req.params;
+    if (!planId) return sendError(res, 400, 'Missing planId');
+
+    const result = await pool.query('DELETE FROM workout_plans WHERE id = $1 RETURNING *', [planId]);
+    if (result.rows.length === 0) return sendError(res, 404, 'Workout plan not found');
+
+    sendSuccess(res, {
+      message: 'Workout plan deleted successfully.',
+      deletedPlan: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error deleting plan:', error);
+    sendError(res, 500, 'Server error while deleting plan');
+  }
+};
+
+// Get plan action history
 export const getPlanActions = async (req: Request, res: Response): Promise<void> => {
   try {
     const { planId } = req.params;
+    if (!planId) return sendError(res, 400, 'Missing planId');
 
-    if (!planId) {
-      res.status(400).json({ error: 'Missing planId' });
-      return;
-    }
+    const result = await pool.query(
+      'SELECT * FROM plan_actions WHERE plan_id = $1 ORDER BY created_at ASC',
+      [planId]
+    );
 
-    const result = await pool.query('SELECT * FROM plan_actions WHERE plan_id = $1 ORDER BY created_at ASC', [planId]);
-
-    res.status(200).json({
-      status: 'success',
-      actions: result.rows
-    });
-
+    sendSuccess(res, { actions: result.rows });
   } catch (error) {
     console.error('Error fetching plan actions:', error);
-    res.status(500).json({ error: 'Server error while fetching plan actions' });
+    sendError(res, 500, 'Server error while fetching plan actions');
   }
 };

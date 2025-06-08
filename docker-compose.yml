@@ -1,21 +1,21 @@
 services:
-  # PostgreSQL Database (your existing settings)
-  db:
-    image: postgres:15
-    container_name: coachgpt-db
-    restart: always
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: coachgpt_db
     environment:
-      POSTGRES_USER: coach
-      POSTGRES_PASSWORD: secret
       POSTGRES_DB: coachgpt
+      POSTGRES_PASSWORD: password
+      PGUSER: postgres
     ports:
-      - "5440:5432"
+      - "5433:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
-      - coachgpt-network
+      - coachgpt_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U coach"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -25,50 +25,48 @@ services:
     build:
       context: ./Backend
       dockerfile: Dockerfile
-    container_name: coachgpt-backend
-    restart: unless-stopped
+    container_name: coachgpt_backend
     environment:
-      NODE_ENV: production
-      PORT: 5002
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_NAME: coachgpt
-      DB_USER: coach
-      DB_PASSWORD: secret
-      JWT_SECRET: coachgpt_secret_4231
-      CORS_ORIGIN: http://localhost:3001
+      - NODE_ENV=production
+      - PORT=5002
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=coachgpt
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - JWT_SECRET=coachgpt_secret_4231
     ports:
-      - "5003:5002"
+      - "5002:5002"
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
     networks:
-      - coachgpt-network
+      - coachgpt_network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
 
   # Redis for caching
   redis:
     image: redis:7-alpine
-    container_name: coachgpt-redis
+    container_name: coachgpt_redis
     restart: unless-stopped
     ports:
       - "6379:6379"
     networks:
-      - coachgpt-network
+      - coachgpt_network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-volumes:
-  pgdata:
-
 networks:
-  coachgpt-network:
+  coachgpt_network:
     driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
