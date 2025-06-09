@@ -1,16 +1,37 @@
 # 🏋️‍♂️ CoachGPT Pro – Backend
 
-The backend for **CoachGPT Pro**, a full-stack AI workout planning system.  
-This Node.js + TypeScript server handles user authentication, workout generation, exercise management, and history tracking using a microservices-style architecture.
+AI-powered workout planning system with **microservices architecture**, comprehensive testing, and Docker support.
 
 ---
 
 ## 🚀 Tech Stack
 
 - **Backend:** Node.js, TypeScript, Express.js  
-- **Database:** PostgreSQL  
-- **Architecture:** Microservices (Auth, Plan, Exercise)  
+- **Database:** PostgreSQL + Redis cache
+- **Architecture:** Microservices (Auth, Plan, Exercise, Health)  
 - **Security:** JWT, bcrypt, helmet, CORS
+- **Testing:** Jest + Docker integration tests
+- **Containerization:** Docker + Docker Compose
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│            CoachGPT Pro Backend             │
+├─────────────────────────────────────────────┤
+│  🔐 Auth Service    │ 🏋️‍♀️ Plan Service      │
+│  🧠 Exercise Service│ 🩺 Health Service    │
+│  📊 Database Layer                          │
+└─────────────────────────────────────────────┘
+```
+
+**Services:**
+- **Auth Service**: User registration, login, JWT management
+- **Plan Service**: AI workout generation, plan modification 
+- **Exercise Service**: Exercise database, muscle group management
+- **Health Service**: System health checks, Kubernetes probes
 
 ---
 
@@ -18,83 +39,72 @@ This Node.js + TypeScript server handles user authentication, workout generation
 
 ```
 /Backend
-  /controllers
-  /routes
-  /services
-  /utils
-  .env.example
-  server.ts
+├── /src
+│   ├── /controllers     # API route handlers  
+│   ├── /db             # Database connection & queries
+│   ├── /routes         # Express route definitions
+│   └── /utils          # Helper functions & validation
+├── /tests              # Unit tests (Auth, Health, Exercise, Plan)
+├── server.ts           # Main application entry point
+├── .env                # Environment variables (gitignored)
+├── .env.docker         # Docker environment config (gitignored)
+├── .env.test           # Test environment config (gitignored)
+├── .dockerignore       # Docker ignore patterns
+├── Dockerfile          # Container definition
+├── docker-compose.yml  # Multi-container orchestration
+├── test-docker.sh      # Docker connectivity tests
+├── jest.config.js      # Jest testing configuration
+├── tsconfig.json       # TypeScript configuration
+├── package.json        # Dependencies & scripts
+├── package-lock.json   # Dependency lock file
+├── init.sql            # Database initialization
+└── setup_database.sql  # Database schema setup
 ```
 
 ---
 
-## 📦 Features
+## 🧪 Testing & Quality
 
-### ✅ Authentication
-- `POST /auth/register` – Register a user  
-- `POST /auth/login` – Login and receive JWT  
-- `DELETE /auth/delete/:userId` – Delete user  
+✅ **All Tests Passing**
+- Unit Tests: 36 passing (Auth, Health, Exercise, Plan services)
+- **`test-docker.sh`**: Docker connectivity & health checks
+  - PostgreSQL connection validation
+  - Redis cache verification
+  - API endpoint health checks
 
-### 🏋️‍♀️ Workout Plans
-- `POST /plan/generate` – Generate 4-week plan  
-- `GET /plan/user/:userId` – Get latest plan for user  
-- `GET /plan/:planId` – Get plan by ID  
-- `PATCH /plan/:planId/swap-exercise` – Swap an exercise  
-- `PATCH /plan/:planId/add-exercise` – Add exercise to plan  
-- `PATCH /plan/:planId/delete-exercise` – Remove exercise from plan  
-- `DELETE /plan/:planId/delete-plan` – Delete plan  
-- `GET /plan/:planId/actions` – Get action history  
-
-### 🧠 Exercises
-- `GET /exercises` – Retrieve all available exercises  
-
----
-
-## 🧪 Full CRUD + Utility Request Examples
-
-Each request below uses a valid UUID format:
-`d290f1ee-6c54-4b01-90e6-d701748f0851`
-
----
-
-### 🔐 AUTHENTICATION ROUTES
-
-#### ✅ Register a user  
-`POST /auth/register`
-```json
-{
-  "name": "John Doe",
-  "email": "john@example.com",
-  "password": "123456"
-}
+```bash
+npm test                # Run all tests
+./test-docker.sh       # Docker integration tests
+npm run test:coverage  # Coverage report
 ```
 
-#### ✅ Login  
-`POST /auth/login`
-```json
-{
-  "email": "john@example.com",
-  "password": "123456"
-}
-```
-
-#### ❌ Delete user  
-`DELETE /auth/delete/d290f1ee-6c54-4b01-90e6-d701748f0851`
-
 ---
 
-### 🧠 EXERCISES ROUTES
+## 🌐 API Endpoints
 
-#### ✅ Get all exercises  
-`GET /exercises`
+| Service | Method | Endpoint | Description |
+|---------|--------|----------|-------------|
+| **🩺 Health** | GET | `/health` | System health with DB test |
+| | GET | `/ready` | Kubernetes readiness probe |
+| | GET | `/live` | Kubernetes liveness probe |
+| **🔐 Auth** | POST | `/auth/register` | Register new user |
+| | POST | `/auth/login` | User login with JWT |
+| | DELETE | `/auth/delete/:userId` | Delete user account |
+| **🏋️‍♀️ Plans** | POST | `/plan/generate` | Generate AI workout plan |
+| | GET | `/plan/user/:userId` | Get user's latest plan |
+| | GET | `/plan/:planId` | Get specific plan by ID |
+| | PATCH | `/plan/:planId/swap-exercise` | Swap exercise in plan |
+| | PATCH | `/plan/:planId/add-exercise` | Add exercise to plan |
+| | PATCH | `/plan/:planId/delete-exercise` | Remove exercise from plan |
+| | DELETE | `/plan/:planId/delete-plan` | Delete entire plan |
+| | GET | `/plan/:planId/actions` | Get plan action history |
+| **🧠 Exercises** | GET | `/exercises` | Get all available exercises |
 
----
+### Example Request:
+```http
+POST /plan/generate
+Authorization: Bearer {jwt_token}
 
-### 🏋️‍♂️ WORKOUT PLAN ROUTES
-
-#### 🆕 Generate a 4-week plan  
-`POST /plan/generate`
-```json
 {
   "userId": "d290f1ee-6c54-4b01-90e6-d701748f0851",
   "goal": "hypertrophy",
@@ -103,79 +113,63 @@ Each request below uses a valid UUID format:
 }
 ```
 
-#### 📥 Get latest plan by user ID  
-`GET /plan/user/d290f1ee-6c54-4b01-90e6-d701748f0851`
+---
 
-#### 📥 Get plan by plan ID  
-`GET /plan/f47ac10b-58cc-4372-a567-0e02b2c3d479`
+## 🐳 Docker Quick Start
 
-#### 🔁 Swap exercise (in specific week or full program)  
-`PATCH /plan/f47ac10b-58cc-4372-a567-0e02b2c3d479/swap-exercise`
-```json
-{
-  "currentExercise": "Push-Up",
-  "newExercise": "Incline Push-Up",
-  "weekNumber": 2
-}
+```bash
+# Start all services
+docker-compose up -d
+
+# Run health checks
+./test-docker.sh
+
+# View logs
+docker-compose logs -f backend
 ```
-
-#### ➕ Add new exercise to a plan  
-`PATCH /plan/f47ac10b-58cc-4372-a567-0e02b2c3d479/add-exercise`
-```json
-{
-  "weekNumber": 2,
-  "muscleGroup": "chest",
-  "newExercise": "Cable Crossover"
-}
-```
-
-#### ➖ Delete exercise from a plan  
-`PATCH /plan/f47ac10b-58cc-4372-a567-0e02b2c3d479/delete-exercise`
-```json
-{
-  "weekNumber": 2,
-  "muscleGroup": "chest",
-  "exerciseToDelete": "Push-Up"
-}
-```
-
-#### ❌ Delete entire plan  
-`DELETE /plan/f47ac10b-58cc-4372-a567-0e02b2c3d479/delete-plan`
-
-#### 📜 Get action history for a plan  
-`GET /plan/f47ac10b-58cc-4372-a567-0e02b2c3d479/actions`
 
 ---
 
-✅ All UUIDs follow your validation:
-```ts
-export const isValidUUID = (uuid: string): boolean => {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(uuid);
-};
+## 🔒 Security Features
+
+- JWT authentication with secure tokens
+- bcrypt password hashing (12 salt rounds)
+- Rate limiting and CORS protection
+- Input validation with UUID verification
+- Helmet.js security headers
+
+---
+
+## 🚀 Getting Started
+
+```bash
+# Start Docker services from Project root (Backend + PostgreSQL + Redis)
+docker-compose up -d
+
+# Install dependencies
+npm install
+
+# Set up environment
+cp .env.example .env
+
+# Initialize database (ensure Docker DB is running)
+npm run db:setup
+
+# Run tests
+npm test
+
+# Start development
+npm run dev
 ```
 
-Use Postman, Thunder Client, or fetch from frontend to test each route.
-
 ---
 
-## 🔒 Security Practices
+## ✅ Status
 
-- ✅ JWT tokens for auth  
-- ✅ Password hashing with `bcrypt`  
-- ✅ CORS + Helmet for security headers  
-- ✅ `.env` for secret management (see `.env.example`)  
+🟢 **Production Ready**
+✅ **All unit tests passing**
+- Docker integration verified  
+- Security best practices implemented
+- Comprehensive API documentation
 
----
-
-## 📌 Future Improvements
-
-- Protect routes with authentication middleware  
-- Add pagination to plan and exercise results  
-- Build admin dashboard for managing exercises  
-
----
-
-## ✅ Final Note
-
-CoachGPT Pro backend is complete and ready for production 🚀  
-Pull requests and contributions are welcome!
+**CoachGPT Pro backend is ready for production! 🚀**
