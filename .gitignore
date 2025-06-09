@@ -1,14 +1,92 @@
 # === Node.js backend ===
 backend/node_modules/
 backend/.env
+backend/.env.*
 backend/.env.*.local
+!backend/.env.example
+!backend/.env.template
 backend/logs/
 backend/*.log
+backend/npm-debug.log*
+backend/yarn-debug.log*
+backend/yarn-error.log*
+backend/lerna-debug.log*
+backend/.pnpm-debug.log*
+backend/dist/
+backend/build/
+backend/coverage/
+backend/.nyc_output/
+backend/.cache/
+backend/.eslintcache
+backend/*.tgz
+backend/*.tar.gz
+
+# === Database files ===
+backend/*.sqlite
+backend/*.sqlite3
+backend/*.db
+backend/*.db-journal
+
+# === Security & Certificates ===
+backend/*.pem
+backend/*.key
+backend/*.cert
+backend/*.csr
+backend/*.crt
+backend/*.p12
+backend/*.pfx
+backend/secrets/
+backend/certificates/
+
+# === Uploads & Storage ===
+backend/uploads/
+backend/storage/
+backend/public/uploads/
+backend/backup/
+backend/*.backup
 
 # === IDE/editor files ===
 .vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
 .idea/
+*.swp
+*.swo
+*~
 
 # === OS files ===
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+*.orig
+.AppleDouble
+.LSOverride
+Icon?
+.DocumentRevisions-V100
+.fseventsd
+.TemporaryItems
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# === Temporary files ===
+*.tmp
+*.temp
+.tmp/
+.temp/
+
+# === Testing ===
+backend/test-results/
+backend/playwright-report/
+backend/test-results.xml
+backend/coverage.xml
+
+# === Deployment ===
+.vercel/
+.netlify/
+.firebase/
