@@ -14,6 +14,23 @@ import { capitalize } from '../utils/stringUtils';
 import { MUSCLE_SPLIT, DIFFICULTY_CONFIG } from '../utils/constants';
 import { pool } from '../db/db';
 
+// Type interfaces for better TypeScript support
+interface Exercise {
+  name: string;
+  sets: number;
+  reps: number;
+}
+
+interface WorkoutDay {
+  day: string;
+  exercises: Exercise[];
+}
+
+interface WorkoutWeek {
+  week: number;
+  days: WorkoutDay[];
+}
+
 // Generate a full workout plan
 export const generatePlan = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -33,10 +50,11 @@ export const generatePlan = async (req: Request, res: Response): Promise<void> =
       return sendError(res, 400, 'Invalid difficulty level');
     }
 
-    const weeks = [];
+    // Initialize with proper types
+    const weeks: WorkoutWeek[] = [];
 
     for (let week = 1; week <= 4; week++) {
-      const days = [];
+      const days: WorkoutDay[] = [];
       
       // Progressive overload logic
       let { sets, reps } = baseConfig;
@@ -57,12 +75,14 @@ export const generatePlan = async (req: Request, res: Response): Promise<void> =
           return sendError(res, 400, `Not enough exercises for ${primary}/${secondary} at ${difficultyLevel} level`);
         }
 
+        // Now TypeScript knows the correct types
         days.push({
           day: `Day ${day + 1} - ${capitalize(primary)} + ${capitalize(secondary)}`,
           exercises: [...primaryExercises, ...secondaryExercises]
         });
       }
 
+      // TypeScript knows this is correct now
       weeks.push({ week, days });
     }
 
