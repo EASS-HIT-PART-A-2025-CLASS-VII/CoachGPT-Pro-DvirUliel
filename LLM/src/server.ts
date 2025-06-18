@@ -1,9 +1,9 @@
+// server.ts - Using /chat prefix
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import dotenv from 'dotenv';
-
 import chatRoutes from './routes/chat.route';
 import healthRoutes from './routes/health.route';
 import { errorHandler, notFound } from './middlewares/error.middleware';
@@ -32,15 +32,17 @@ app.get('/', (req, res) => {
     status: 'running',
     endpoints: {
       health: '/health',
-      chat: '/api/llm/chat',
-      stream: '/api/llm/chat/stream'
+      chat: '/chat',
+      stream: '/chat/stream',
+      conversations: '/chat/conversations/:userId',
+      models: '/chat/models',
+      context: '/chat/context/:userId'
     }
   });
 });
 
 app.use('/health', healthRoutes);
-app.use('/api/llm', chatRoutes);
-
+app.use('/chat', chatRoutes);  
 // Error handling
 app.use('*', notFound);
 app.use(errorHandler);
@@ -50,7 +52,7 @@ if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
     console.log(`🚀 LLM Service running on port ${PORT}`);
     console.log(`📊 Health: http://localhost:${PORT}/health`);
-    console.log(`🤖 Chat: http://localhost:${PORT}/api/llm/chat`);
+    console.log(`🤖 Chat: http://localhost:${PORT}/chat`);
   });
 }
 

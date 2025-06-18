@@ -1,17 +1,16 @@
 # Use Node.js LTS version
 FROM node:18-alpine
 
-# Set working directory
 WORKDIR /app
 
 # Install curl for health checks
-RUN apk add --no-cache curl
+RUN apk add --no-cache curl bash
 
-# Copy package files first (for better Docker layer caching)
+# Copy package files
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Install ALL dependencies (including devDependencies for building)
+# Install dependencies
 RUN npm ci
 
 # Copy source code
@@ -20,25 +19,20 @@ COPY src ./src
 # Build TypeScript
 RUN npm run build
 
-# Remove dev dependencies to reduce image size
+# Remove dev dependencies
 RUN npm prune --production
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S llmservice -u 1001 -G nodejs
-
-# Change ownership of the app directory
 RUN chown -R llmservice:nodejs /app
-
-# Switch to non-root user
 USER llmservice
 
-# Expose port
 EXPOSE 5003
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:5003/health || exit 1
+# Simple health check
+HEALTHCHECK --interval=30s --timeout=15s --start-period=120s --retries=5 \
+    CMD curl -f http://localhost:5003/health || exit 1
 
-# Start the application
+# Start the application directly
 CMD ["npm", "start"]

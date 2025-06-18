@@ -1,7 +1,9 @@
-import { Pool } from 'pg';
+import { Pool, PoolClient } from 'pg';
 
 export class DatabaseService {
   private pool: Pool;
+  private healthCheckCache: { healthy: boolean; lastCheck: number } = { healthy: false, lastCheck: 0 };
+  private readonly CACHE_TTL = 5000; // 5 seconds cache
 
   constructor() {
     this.pool = new Pool({
@@ -12,7 +14,7 @@ export class DatabaseService {
       password: process.env.DB_PASSWORD || 'password',
       max: 20,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      connectionTimeoutMillis: 3000,
     });
 
     this.initializeTables();
@@ -33,7 +35,7 @@ export class DatabaseService {
     return results.length > 0 ? results[0] : null;
   }
 
-  async transaction<T>(callback: (client: any) => Promise<T>): Promise<T> {
+  async transaction<T>(callback: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
@@ -49,10 +51,38 @@ export class DatabaseService {
   }
 
   async checkHealth(): Promise<boolean> {
+    const now = Date.now();
+    
+    // Use cached result if recent
+    if (now - this.healthCheckCache.lastCheck < this.CACHE_TTL) {
+      return this.healthCheckCache.healthy;
+    }
+
     try {
-      await this.query('SELECT 1');
-      return true;
-    } catch {
+      console.log('🔍 Checking database health...');
+      
+      // Test with a simple query and timeout
+      const result = await Promise.race([
+        this.query('SELECT 1 as test'),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Database health check timeout')), 3000)
+        )
+      ]) as any[];
+
+      const healthy = result.length > 0 && result[0].test === 1;
+      
+      if (healthy) {
+        console.log('✅ Database health check passed');
+      } else {
+        console.error('❌ Database health check failed: unexpected result');
+      }
+
+      this.healthCheckCache = { healthy, lastCheck: now };
+      return healthy;
+      
+    } catch (error: any) {
+      console.error('❌ Database health check failed:', error.message);
+      this.healthCheckCache = { healthy: false, lastCheck: now };
       return false;
     }
   }

@@ -1,5 +1,5 @@
 services:
-  # PostgreSQL Database
+  # PostgreSQL Database - Shared infrastructure
   postgres:
     image: postgres:15-alpine
     container_name: coachgpt_db
@@ -20,35 +20,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # Backend API Service (Independent)
-  backend:
-    build:
-      context: ./Backend
-      dockerfile: Dockerfile
-    container_name: coachgpt_backend
-    environment:
-      - NODE_ENV=production
-      - PORT=5002
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=coachgpt
-      - DB_USER=postgres
-      - DB_PASSWORD=password
-      - JWT_SECRET=coachgpt_secret_4231
-    ports:
-      - "5002:5002"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - coachgpt_network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Redis for caching (Shared resource)
+  # Redis Cache - Shared infrastructure  
   redis:
     image: redis:7-alpine
     container_name: coachgpt_redis
@@ -63,7 +35,40 @@ services:
       timeout: 5s
       retries: 5
 
-  # Ollama LLM Engine (Independent)
+  # Backend API Service - INDEPENDENT
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: coachgpt_backend
+    environment:
+      - NODE_ENV=production
+      - PORT=5002
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=coachgpt
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - JWT_SECRET=coachgpt_secret_4231
+      # Optional: LLM service URL for future integration
+      - LLM_SERVICE_URL=http://llm-service:5003
+    ports:
+      - "5002:5002"
+    depends_on:
+      # Only depends on shared infrastructure
+      postgres:
+        condition: service_healthy
+      # NO dependency on LLM service!
+    networks:
+      - coachgpt_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Ollama LLM Engine - INDEPENDENT
   ollama:
     image: ollama/ollama:latest
     container_name: coachgpt_ollama
@@ -76,14 +81,15 @@ services:
       - coachgpt_network
     environment:
       - OLLAMA_HOST=0.0.0.0:11434
+      - OLLAMA_ORIGINS=["*"]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      test: ["CMD", "/bin/ollama", "list"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 60s
 
-  # LLM Microservice (Independent)
+  # LLM Microservice - INDEPENDENT
   llm-service:
     build:
       context: ./LLM
@@ -93,7 +99,7 @@ services:
       - NODE_ENV=production
       - PORT=5003
       - OLLAMA_URL=http://ollama:11434
-      - OLLAMA_MODEL=llama3.1:8b-instruct-q4_K_M
+      - OLLAMA_MODEL=llama3.2:3b
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=coachgpt
@@ -109,15 +115,18 @@ services:
       - DEFAULT_MAX_TOKENS=1000
       - CACHE_TTL=300
       - CACHE_PREFIX=coachgpt_llm
+      - SKIP_MODEL_DOWNLOAD=true
     ports:
       - "5003:5003"
     depends_on:
+      # Only depends on shared infrastructure + Ollama
       postgres:
         condition: service_healthy
       ollama:
         condition: service_healthy
       redis:
         condition: service_healthy
+      # NO dependency on backend!
     networks:
       - coachgpt_network
     healthcheck:
@@ -125,6 +134,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 180s
+    restart: unless-stopped
 
 networks:
   coachgpt_network:

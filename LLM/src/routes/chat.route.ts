@@ -10,14 +10,14 @@ const router = Router();
 // Create controller instance
 const chatController = new ChatController();
 
-// Chat endpoints
-router.post('/chat',
+// Chat endpoints 
+router.post('/',  
   rateLimitMiddleware,
   validateChatRequest,
   asyncHandler(chatController.chat)
 );
 
-router.post('/chat/stream',
+router.post('/stream',  
   rateLimitMiddleware,
   validateChatRequest,
   asyncHandler(chatController.streamChat)

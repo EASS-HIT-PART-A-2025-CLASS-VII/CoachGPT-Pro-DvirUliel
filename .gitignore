@@ -90,3 +90,6 @@ backend/coverage.xml
 .vercel/
 .netlify/
 .firebase/
+
+LLM/node_modules/
+LLM/.env
