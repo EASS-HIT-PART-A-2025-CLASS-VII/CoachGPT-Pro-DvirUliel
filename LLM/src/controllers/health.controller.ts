@@ -1,22 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
 import { LLMService } from '../services/llm.service';
-import { DatabaseService } from '../services/database.service';
-import { CacheService } from '../services/cache.service';
 
 export class HealthController {
-  private llmService = new LLMService();
-  private databaseService = new DatabaseService();
-  private cacheService = new CacheService();
+  private llmService = LLMService.getInstance(); // ← THIS IS THE FIX - Use singleton!
 
   basicHealth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const [ollamaHealthy, dbHealthy, redisHealthy] = await Promise.all([
-        this.llmService.checkHealth(),
-        this.databaseService.checkHealth(),
-        this.cacheService.checkHealth()
-      ]);
+      const ollamaHealthy = await this.llmService.checkHealth();
 
-      const status = ollamaHealthy && dbHealthy ? 'healthy' : 'degraded';
+      const status = ollamaHealthy ? 'healthy' : 'unhealthy';
       const statusCode = status === 'healthy' ? 200 : 503;
 
       res.status(statusCode).json({
@@ -25,8 +17,7 @@ export class HealthController {
           status,
           services: {
             ollama: ollamaHealthy,
-            database: dbHealthy,
-            redis: redisHealthy
+            llmService: this.llmService.isReady()
           },
           timestamp: new Date().toISOString(),
           uptime: process.uptime()
@@ -39,39 +30,34 @@ export class HealthController {
 
   detailedHealth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const [models, ollamaHealthy, dbHealthy, redisHealthy] = await Promise.all([
+      const [models, ollamaHealthy] = await Promise.all([
         this.llmService.getAvailableModels(),
-        this.llmService.checkHealth(),
-        this.databaseService.checkHealth(),
-        this.cacheService.checkHealth()
+        this.llmService.checkHealth()
       ]);
 
       res.json({
         success: true,
         data: {
-          status: ollamaHealthy && dbHealthy ? 'healthy' : 'degraded',
+          status: ollamaHealthy ? 'healthy' : 'unhealthy',
           services: {
             ollama: {
               status: ollamaHealthy,
               url: process.env.OLLAMA_URL || 'http://localhost:11434',
-              currentModel: process.env.OLLAMA_MODEL || 'llama3.1:8b-instruct-q4_K_M',
+              currentModel: process.env.OLLAMA_MODEL || 'llama3.2:3b',
               availableModels: models
             },
-            database: {
-              status: dbHealthy,
-              host: process.env.DB_HOST || 'localhost',
-              port: process.env.DB_PORT || 5432
-            },
-            redis: {
-              status: redisHealthy,
-              url: process.env.REDIS_URL || 'redis://localhost:6379'
+            llmService: {
+              status: this.llmService.isReady(),
+              timeout: process.env.LLM_TIMEOUT || '70000ms',
+              maxTokens: process.env.DEFAULT_MAX_TOKENS || '200'
             }
           },
           system: {
             environment: process.env.NODE_ENV || 'development',
             uptime: process.uptime(),
             memory: process.memoryUsage(),
-            version: '1.0.0'
+            version: '1.0.0',
+            rateLimiting: 'in-memory'
           },
           timestamp: new Date().toISOString()
         }
@@ -83,16 +69,17 @@ export class HealthController {
 
   readinessProbe = async (req: Request, res: Response): Promise<void> => {
     try {
-      const [ollamaReady, dbReady] = await Promise.all([
-        this.llmService.checkHealth(),
-        this.databaseService.checkHealth()
-      ]);
-
-      const isReady = ollamaReady && dbReady;
+      const ollamaReady = await this.llmService.checkHealth();
+      const llmReady = this.llmService.isReady();
+      
+      const isReady = ollamaReady && llmReady;
       
       res.status(isReady ? 200 : 503).json({
         ready: isReady,
-        services: { ollama: ollamaReady, database: dbReady },
+        services: { 
+          ollama: ollamaReady, 
+          llmService: llmReady 
+        },
         timestamp: new Date().toISOString()
       });
     } catch (error: any) {
@@ -108,37 +95,35 @@ export class HealthController {
     res.json({
       live: true,
       timestamp: new Date().toISOString(),
-      uptime: process.uptime()
+      uptime: process.uptime(),
+      memoryUsage: {
+        used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024)
+      }
     });
   };
 
   dependenciesStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const [ollamaHealthy, dbHealthy, redisHealthy] = await Promise.all([
-        this.llmService.checkHealth(),
-        this.databaseService.checkHealth(),
-        this.cacheService.checkHealth()
-      ]);
+      const ollamaHealthy = await this.llmService.checkHealth();
+      const llmReady = this.llmService.isReady();
 
       const dependencies = [
         {
-          name: 'Ollama LLM Service',
+          name: 'Ollama LLM Engine',
           status: ollamaHealthy ? 'healthy' : 'unhealthy',
-          critical: true
+          critical: true,
+          description: 'AI model inference engine'
         },
         {
-          name: 'PostgreSQL Database',
-          status: dbHealthy ? 'healthy' : 'unhealthy',
-          critical: true
-        },
-        {
-          name: 'Redis Cache',
-          status: redisHealthy ? 'healthy' : 'unhealthy',
-          critical: false
+          name: 'LLM Service',
+          status: llmReady ? 'ready' : 'initializing',
+          critical: true,
+          description: 'CoachGPT Pro service layer'
         }
       ];
 
-      const criticalFailures = dependencies.filter(dep => dep.critical && dep.status !== 'healthy');
+      const criticalFailures = dependencies.filter(dep => dep.critical && dep.status !== 'healthy' && dep.status !== 'ready');
 
       res.json({
         success: true,
@@ -146,7 +131,8 @@ export class HealthController {
           overallStatus: criticalFailures.length > 0 ? 'unhealthy' : 'healthy',
           criticalFailures: criticalFailures.length,
           dependencies,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          architecture: 'simplified-llm-service'
         }
       });
     } catch (error) {
@@ -159,12 +145,7 @@ export class HealthController {
       const startTime = Date.now();
       
       // Test service response times
-      const [ollamaHealthy, dbHealthy, redisHealthy] = await Promise.all([
-        this.llmService.checkHealth(),
-        this.databaseService.checkHealth(),
-        this.cacheService.checkHealth()
-      ]);
-
+      const ollamaHealthy = await this.llmService.checkHealth();
       const totalResponseTime = Date.now() - startTime;
 
       res.json({
@@ -172,11 +153,9 @@ export class HealthController {
         data: {
           timestamp: new Date().toISOString(),
           responseTime: {
-            total: `${totalResponseTime}ms`,
+            healthCheck: `${totalResponseTime}ms`,
             services: {
-              ollama: ollamaHealthy ? 'available' : 'unavailable',
-              database: dbHealthy ? 'available' : 'unavailable',
-              redis: redisHealthy ? 'available' : 'unavailable'
+              ollama: ollamaHealthy ? 'available' : 'unavailable'
             }
           },
           system: {
@@ -184,12 +163,64 @@ export class HealthController {
             memory: {
               used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
               total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
-              rss: Math.round(process.memoryUsage().rss / 1024 / 1024)
+              rss: Math.round(process.memoryUsage().rss / 1024 / 1024),
+              external: Math.round(process.memoryUsage().external / 1024 / 1024)
             },
-            cpu: process.cpuUsage()
+            cpu: process.cpuUsage(),
+            platform: process.platform,
+            nodeVersion: process.version
+          },
+          configuration: {
+            model: process.env.OLLAMA_MODEL || 'llama3.2:3b',
+            timeout: process.env.LLM_TIMEOUT || '70000',
+            maxTokens: process.env.DEFAULT_MAX_TOKENS || '200',
+            temperature: process.env.DEFAULT_TEMPERATURE || '0.7'
           }
         }
       });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // New endpoint: Test AI generation
+  testGeneration = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!this.llmService.isReady()) {
+        res.status(503).json({
+          success: false,
+          error: 'LLM service not ready',
+          timestamp: new Date().toISOString()
+        });
+        return;
+      }
+
+      const startTime = Date.now();
+      
+      try {
+        await this.llmService.testGeneration();
+        const responseTime = Date.now() - startTime;
+        
+        res.json({
+          success: true,
+          data: {
+            message: 'AI generation test completed successfully',
+            responseTime: `${responseTime}ms`,
+            status: 'operational',
+            timestamp: new Date().toISOString()
+          }
+        });
+      } catch (error: any) {
+        const responseTime = Date.now() - startTime;
+        
+        res.status(500).json({
+          success: false,
+          error: 'AI generation test failed',
+          details: error.message,
+          responseTime: `${responseTime}ms`,
+          timestamp: new Date().toISOString()
+        });
+      }
     } catch (error) {
       next(error);
     }

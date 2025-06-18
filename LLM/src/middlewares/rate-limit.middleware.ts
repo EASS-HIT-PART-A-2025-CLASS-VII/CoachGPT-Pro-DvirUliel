@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { CacheService } from '../services/cache.service';
 
-const cacheService = new CacheService();
+// Simple in-memory rate limiting (resets on service restart)
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
 export const rateLimitMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -16,13 +16,33 @@ export const rateLimitMiddleware = async (req: Request, res: Response, next: Nex
     }
 
     const windowMs = 60000; // 1 minute
-    const maxRequests = 20;
+    const maxRequests = 10; // Reduced for local LLM
+    const now = Date.now();
     
-    const currentCount = await cacheService.incrementRateLimit(`rate_limit:${userId}`, windowMs);
-
+    // Clean up expired entries
+    cleanupExpiredEntries(now);
+    
+    const userKey = `rate_limit:${userId}`;
+    const userLimit = rateLimitStore.get(userKey);
+    
+    if (!userLimit || now > userLimit.resetTime) {
+      // First request or window expired
+      rateLimitStore.set(userKey, {
+        count: 1,
+        resetTime: now + windowMs
+      });
+    } else {
+      // Increment count
+      userLimit.count++;
+      rateLimitStore.set(userKey, userLimit);
+    }
+    
+    const currentCount = rateLimitStore.get(userKey)!.count;
+    
     res.set({
       'X-RateLimit-Limit': maxRequests.toString(),
-      'X-RateLimit-Remaining': Math.max(0, maxRequests - currentCount).toString()
+      'X-RateLimit-Remaining': Math.max(0, maxRequests - currentCount).toString(),
+      'X-RateLimit-Reset': Math.ceil(rateLimitStore.get(userKey)!.resetTime / 1000).toString()
     });
 
     if (currentCount > maxRequests) {
@@ -30,7 +50,7 @@ export const rateLimitMiddleware = async (req: Request, res: Response, next: Nex
         success: false,
         error: 'Rate limit exceeded',
         message: `Too many requests. Maximum ${maxRequests} requests per minute.`,
-        retryAfter: Math.ceil(windowMs / 1000)
+        retryAfter: Math.ceil((rateLimitStore.get(userKey)!.resetTime - now) / 1000)
       });
       return;
     }
@@ -41,3 +61,17 @@ export const rateLimitMiddleware = async (req: Request, res: Response, next: Nex
     next(); // Don't block requests if rate limiting fails
   }
 };
+
+// Clean up expired entries to prevent memory leaks
+function cleanupExpiredEntries(now: number): void {
+  for (const [key, value] of rateLimitStore.entries()) {
+    if (now > value.resetTime) {
+      rateLimitStore.delete(key);
+    }
+  }
+}
+
+// Optional: Periodic cleanup (run every 5 minutes)
+setInterval(() => {
+  cleanupExpiredEntries(Date.now());
+}, 5 * 60 * 1000);

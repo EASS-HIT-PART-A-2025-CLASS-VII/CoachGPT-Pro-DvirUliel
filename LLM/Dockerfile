@@ -19,20 +19,24 @@ COPY src ./src
 # Build TypeScript
 RUN npm run build
 
-# Remove dev dependencies
-RUN npm prune --production
+# Remove dev dependencies and TypeScript source files to reduce image size
+RUN npm prune --production && \
+    rm -rf src/ tsconfig.json
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S llmservice -u 1001 -G nodejs
+
+# Change ownership to non-root user
 RUN chown -R llmservice:nodejs /app
 USER llmservice
 
+# Expose port
 EXPOSE 5003
 
-# Simple health check
-HEALTHCHECK --interval=30s --timeout=15s --start-period=120s --retries=5 \
-    CMD curl -f http://localhost:5003/health || exit 1
+# Updated health check to use the new health endpoint
+HEALTHCHECK --interval=30s --timeout=15s --start-period=180s --retries=3 \
+    CMD curl -f http://localhost:5003/health/ready || exit 1
 
-# Start the application directly
+# Start the application
 CMD ["npm", "start"]

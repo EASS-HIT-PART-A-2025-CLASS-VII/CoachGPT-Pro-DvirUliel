@@ -91,5 +91,6 @@ backend/coverage.xml
 .netlify/
 .firebase/
 
+# === LLM ===
 LLM/node_modules/
 LLM/.env
