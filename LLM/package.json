@@ -4,14 +4,14 @@
     "description": "Simplified LLM microservice for CoachGPT Pro - AI fitness coaching",
     "main": "dist/server.js",
     "scripts": {
-        "build": "tsc",
-        "start": "node dist/src/server.js",
-        "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-        "test": "jest",
-        "lint": "eslint src/**/*.ts",
-        "lint:fix": "eslint src/**/*.ts --fix",
-        "clean": "rm -rf dist",
-        "build:clean": "npm run clean && npm run build"
+    "build": "tsc",
+    "start": "ts-node src/server.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "test": "jest",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "clean": "rm -rf dist",
+    "build:clean": "npm run clean && npm run build"
     },
     "dependencies": {
         "axios": "^1.6.2",

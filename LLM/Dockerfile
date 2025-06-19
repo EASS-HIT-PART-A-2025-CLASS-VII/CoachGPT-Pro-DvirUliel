@@ -1,42 +1,39 @@
-# Use Node.js LTS version
+# Use Node.js LTS version (with full capabilities)
 FROM node:18-alpine
 
 WORKDIR /app
 
-# Install curl for health checks
+# Install curl, bash, and Python for optional native builds (if needed)
 RUN apk add --no-cache curl bash
 
 # Copy package files
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Install dependencies
-RUN npm ci
+# Install full dependencies (including devDeps because ts-node is dev)
+ENV NODE_ENV=development
+RUN npm install
+
+# Install ts-node globally
+RUN npm install -g ts-node
 
 # Copy source code
 COPY src ./src
-
-# Build TypeScript
-RUN npm run build
-
-# Remove dev dependencies and TypeScript source files to reduce image size
-RUN npm prune --production && \
-    rm -rf src/ tsconfig.json
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S llmservice -u 1001 -G nodejs
 
-# Change ownership to non-root user
+# Give ownership to non-root user
 RUN chown -R llmservice:nodejs /app
 USER llmservice
 
-# Expose port
+# Expose API port
 EXPOSE 5003
 
-# Updated health check to use the new health endpoint
+# Health check
 HEALTHCHECK --interval=30s --timeout=15s --start-period=180s --retries=3 \
     CMD curl -f http://localhost:5003/health/ready || exit 1
 
-# Start the application
-CMD ["npm", "start"]
+# Start the TypeScript app directly using ts-node
+CMD ["ts-node", "src/server.ts"]
