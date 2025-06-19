@@ -1,5 +1,5 @@
 import express from 'express';
-import { addExerciseToPlan, deleteExerciseFromPlan, deletePlan, generatePlan, getPlanActions, getPlanById, getPlanByUser, swapExercise } from '../controllers/planController';
+import { addExerciseToPlan, deleteExerciseFromPlan, deletePlan, generatePlan, getPlanActions, getPlanById, getPlanByUser, swapExercise } from '../controllers/plan.controller';
 const router = express.Router();
 
 

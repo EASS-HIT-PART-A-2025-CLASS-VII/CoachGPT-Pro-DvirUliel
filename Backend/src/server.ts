@@ -8,10 +8,10 @@ import dotenv from 'dotenv';
 import { testConnection } from './db/db';
 
 // Import routes
-import authRoutes from './routes/authRoutes';
-import exerciseRoutes from './routes/exerciseRoutes';
-import planRoutes from './routes/planRoutes';
-import healthRoutes from './routes/healthRoutes';
+import authRoutes from './routes/auth.route';
+import exerciseRoutes from './routes/exercise.route';
+import planRoutes from './routes/plan.route';
+import healthRoutes from './routes/health.route';
 
 dotenv.config();
 
