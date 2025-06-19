@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import Joi from 'joi';
 
+// Ensures userId is a valid UUID format and message is 1-2000 characters
 const chatRequestSchema = Joi.object({
   userId: Joi.string().uuid().required(),
   message: Joi.string().min(1).max(2000).required(),

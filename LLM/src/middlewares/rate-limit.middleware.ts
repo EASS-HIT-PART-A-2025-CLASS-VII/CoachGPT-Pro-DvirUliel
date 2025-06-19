@@ -3,6 +3,12 @@ import { Request, Response, NextFunction } from 'express';
 // Simple in-memory rate limiting (resets on service restart)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
+/**
+ * Limits each user to 10 requests per minute
+ * Tracks requests in memory (resets on restart)
+ * Adds rate limit headers to responses
+ * Cleans up expired entries every 5 minutes
+ */
 export const rateLimitMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = req.body.userId || req.params.userId;

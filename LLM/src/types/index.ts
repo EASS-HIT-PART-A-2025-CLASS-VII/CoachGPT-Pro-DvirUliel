@@ -1,4 +1,4 @@
-// types/index.ts - Type definitions for the LLM service
+// Type definitions for the LLM service
 
 export interface ChatMessage {
     role: 'system' | 'user' | 'assistant';

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 
+// Logs all requests with timestamp, method, path, status, duration
 export const requestLogger = (req: Request, res: Response, next: NextFunction): void => {
   const start = Date.now();
   
