@@ -3,7 +3,7 @@ import { LLMService } from '../services/llm.service';
 import { ChatMessage } from '../types';
 
 export class ChatController {
-  private llmService = LLMService.getInstance(); // ← Use singleton!
+  private llmService = LLMService.getInstance(); // Singleton instance
 
   chat = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

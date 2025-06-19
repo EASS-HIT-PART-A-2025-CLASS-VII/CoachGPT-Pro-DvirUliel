@@ -1,4 +1,3 @@
-// Fixed llm.service.ts - Singleton Pattern Implementation
 import axios, { AxiosResponse } from 'axios';
 import { ChatMessage } from '../types';
 
@@ -29,6 +28,7 @@ interface OllamaGenerateResponse {
 }
 
 export class LLMService {
+  // Singleton instance
   private static instance: LLMService;
   private ollamaUrl: string;
   private model: string;
@@ -36,10 +36,11 @@ export class LLMService {
   private modelInitialized: boolean = false;
   private initializationInProgress: boolean = false;
   private initializationPromise: Promise<void> | null = null;
-  private readonly CACHE_TTL = 10000; // 10 seconds cache
+  private readonly CACHE_TTL = 10000; // 10 seconds
   private readonly REQUEST_TIMEOUT = parseInt(process.env.LLM_TIMEOUT || '70000');
   private readonly HEALTH_TIMEOUT = 10000;
 
+  // Private constructor for Singleton pattern
   private constructor() {
     this.ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
     this.model = process.env.OLLAMA_MODEL || 'llama3.2:3b';
@@ -51,7 +52,7 @@ export class LLMService {
     });
   }
 
-  // Singleton pattern - ensures only one instance
+  // Get singleton instance
   public static getInstance(): LLMService {
     if (!LLMService.instance) {
       LLMService.instance = new LLMService();
@@ -59,7 +60,7 @@ export class LLMService {
     return LLMService.instance;
   }
 
-  // Initialize and return the same promise if already initializing
+  // Initialize the service (wait for Ollama and model)
   public async initialize(): Promise<void> {
     if (this.modelInitialized) {
       return Promise.resolve();
@@ -73,6 +74,7 @@ export class LLMService {
     return this.initializationPromise;
   }
 
+  // Internal initialization process
   private async initializeModel(): Promise<void> {
     if (this.initializationInProgress) return;
     
@@ -80,13 +82,8 @@ export class LLMService {
     console.log(`🚀 Initializing LLM service with model: ${this.model}`);
 
     try {
-      // Wait for Ollama to be ready
       await this.waitForOllama();
-      
-      // Check if model exists, pull if needed
       await this.ensureModelExists();
-      
-      // Test generation to warm up the model
       await this.warmUpModel();
       
       this.modelInitialized = true;
@@ -94,12 +91,13 @@ export class LLMService {
       
     } catch (error: any) {
       console.error(`❌ LLM service initialization failed:`, error.message);
-      throw error; // Re-throw to handle in server startup
+      throw error;
     } finally {
       this.initializationInProgress = false;
     }
   }
 
+  // Wait for Ollama service to be ready
   private async waitForOllama(maxRetries: number = 30): Promise<void> {
     for (let i = 0; i < maxRetries; i++) {
       try {
@@ -119,6 +117,7 @@ export class LLMService {
     throw new Error('Ollama not ready after maximum retries');
   }
 
+  // Check if model exists, pull if needed
   private async ensureModelExists(): Promise<void> {
     try {
       const response = await axios.get(`${this.ollamaUrl}/api/tags`, {
@@ -137,12 +136,11 @@ export class LLMService {
 
       console.log(`📥 Pulling model: ${this.model} (this may take several minutes...)`);
       
-      // Use streaming endpoint for progress updates
       const pullResponse = await axios.post(`${this.ollamaUrl}/api/pull`, {
         name: this.model,
         stream: false
       }, {
-        timeout: 600000, // 10 minutes for model download
+        timeout: 600000, // 10 minutes
         validateStatus: (status) => status < 500
       });
 
@@ -158,6 +156,7 @@ export class LLMService {
     }
   }
 
+  // Warm up model for faster first response
   private async warmUpModel(): Promise<void> {
     try {
       console.log(`🔥 Warming up model ${this.model}...`);
@@ -173,7 +172,7 @@ export class LLMService {
       };
 
       const response = await axios.post(`${this.ollamaUrl}/api/generate`, warmupRequest, {
-        timeout: 30000, // 30s for warmup
+        timeout: 30000,
         headers: { 'Content-Type': 'application/json' }
       });
 
@@ -185,10 +184,11 @@ export class LLMService {
     }
   }
 
+  // Check service health with caching
   async checkHealth(): Promise<boolean> {
     const now = Date.now();
     
-    // Use cache if available
+    // Return cached result if still valid
     if (now - this.healthCheckCache.lastCheck < this.CACHE_TTL) {
       return this.healthCheckCache.healthy;
     }
@@ -211,6 +211,7 @@ export class LLMService {
 
       const healthy = modelAvailable && this.modelInitialized;
       
+      // Update cache
       this.healthCheckCache = { healthy, lastCheck: now };
       return healthy;
 
@@ -221,6 +222,7 @@ export class LLMService {
     }
   }
 
+  // Generate AI response (non-streaming)
   async generateResponse(messages: ChatMessage[]) {
     if (!this.modelInitialized) {
       throw new Error('LLM service not ready. Model initialization in progress.');
@@ -292,6 +294,7 @@ export class LLMService {
     }
   }
 
+  // Build fitness coach prompt
   private buildSimplePrompt(messages: ChatMessage[]): string {
     const lastMessage = messages[messages.length - 1];
     
@@ -301,13 +304,14 @@ export class LLMService {
     
     const prompt = `You are CoachGPT Pro, a fitness coach. Give helpful, concise advice (2-3 sentences).
 
-User: ${lastMessage.content}
+    User: ${lastMessage.content}
 
-Coach:`;
+    Coach:`;
     
     return prompt;
   }
 
+  // Generate streaming response
   async generateStreamResponse(messages: ChatMessage[]) {
     if (!this.modelInitialized) {
       throw new Error('LLM service not ready. Model initialization in progress.');
@@ -341,6 +345,7 @@ Coach:`;
     }
   }
 
+  // Parse streaming chunks from Ollama
   private async* parseStreamResponse(stream: any) {
     let buffer = '';
     for await (const chunk of stream) {
@@ -364,6 +369,7 @@ Coach:`;
     }
   }
 
+  // Get list of available models
   async getAvailableModels(): Promise<string[]> {
     try {
       const response = await axios.get(`${this.ollamaUrl}/api/tags`, { 
@@ -376,6 +382,7 @@ Coach:`;
     }
   }
 
+  // Pull new model from Ollama
   async pullModel(modelName: string): Promise<boolean> {
     try {
       console.log(`📥 Pulling model: ${modelName}`);
@@ -391,16 +398,19 @@ Coach:`;
     }
   }
 
+  // Check if service is ready
   isReady(): boolean {
     return this.modelInitialized;
   }
 
+  // Force reinitialize service
   async reinitialize(): Promise<void> {
     this.modelInitialized = false;
     this.initializationPromise = null;
     await this.initialize();
   }
 
+  // Test generation capability
   async testGeneration(): Promise<void> {
     try {
       console.log('🧪 Running LLM service test...');

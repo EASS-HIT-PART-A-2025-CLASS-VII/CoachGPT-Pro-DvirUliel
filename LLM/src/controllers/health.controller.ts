@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { LLMService } from '../services/llm.service';
 
 export class HealthController {
-  private llmService = LLMService.getInstance(); // ← THIS IS THE FIX - Use singleton!
+  private llmService = LLMService.getInstance(); // Singleton instance
 
   basicHealth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

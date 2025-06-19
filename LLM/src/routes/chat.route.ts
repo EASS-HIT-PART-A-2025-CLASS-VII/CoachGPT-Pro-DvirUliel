@@ -9,21 +9,13 @@ const router = Router();
 // Create controller instance
 const chatController = new ChatController();
 
-// Core chat endpoints - SIMPLIFIED
-router.post('/', 
-  rateLimitMiddleware,
-  asyncHandler(chatController.chat)
-);
+// Chat
+router.post('/', rateLimitMiddleware, asyncHandler(chatController.chat));
 
-router.post('/stream', 
-  rateLimitMiddleware,
-  asyncHandler(chatController.streamChat)
-);
+// Stream chat
+router.post('/stream', rateLimitMiddleware, asyncHandler(chatController.streamChat));
 
 // Model management
-router.get('/models',
-  asyncHandler(chatController.getAvailableModels)
-);
+router.get('/models', asyncHandler(chatController.getAvailableModels));
 
-// Export the router
 export default router;

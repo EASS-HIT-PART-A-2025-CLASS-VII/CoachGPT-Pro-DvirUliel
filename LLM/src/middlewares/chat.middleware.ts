@@ -6,10 +6,6 @@ const chatRequestSchema = Joi.object({
   message: Joi.string().min(1).max(2000).required(),
 });
 
-const conversationRequestSchema = Joi.object({
-  userId: Joi.string().uuid().required()
-});
-
 export const validateChatRequest = (req: Request, res: Response, next: NextFunction): void => {
   const { error, value } = chatRequestSchema.validate(req.body);
   

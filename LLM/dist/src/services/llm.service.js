@@ -1,0 +1,335 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.LLMService = void 0;
+const axios_1 = __importDefault(require("axios"));
+class LLMService {
+    constructor() {
+        this.healthCheckCache = { healthy: false, lastCheck: 0 };
+        this.modelInitialized = false;
+        this.initializationInProgress = false;
+        this.initializationPromise = null;
+        this.CACHE_TTL = 10000;
+        this.REQUEST_TIMEOUT = parseInt(process.env.LLM_TIMEOUT || '70000');
+        this.HEALTH_TIMEOUT = 10000;
+        this.ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
+        this.model = process.env.OLLAMA_MODEL || 'llama3.2:3b';
+        console.log(`🚀 LLM Service initialized:`, {
+            url: this.ollamaUrl,
+            model: this.model,
+            timeout: this.REQUEST_TIMEOUT
+        });
+    }
+    static getInstance() {
+        if (!LLMService.instance) {
+            LLMService.instance = new LLMService();
+        }
+        return LLMService.instance;
+    }
+    async initialize() {
+        if (this.modelInitialized) {
+            return Promise.resolve();
+        }
+        if (this.initializationPromise) {
+            return this.initializationPromise;
+        }
+        this.initializationPromise = this.initializeModel();
+        return this.initializationPromise;
+    }
+    async initializeModel() {
+        if (this.initializationInProgress)
+            return;
+        this.initializationInProgress = true;
+        console.log(`🚀 Initializing LLM service with model: ${this.model}`);
+        try {
+            await this.waitForOllama();
+            await this.ensureModelExists();
+            await this.warmUpModel();
+            this.modelInitialized = true;
+            console.log(`✅ LLM service initialized successfully`);
+        }
+        catch (error) {
+            console.error(`❌ LLM service initialization failed:`, error.message);
+            throw error;
+        }
+        finally {
+            this.initializationInProgress = false;
+        }
+    }
+    async waitForOllama(maxRetries = 30) {
+        for (let i = 0; i < maxRetries; i++) {
+            try {
+                const response = await axios_1.default.get(`${this.ollamaUrl}/api/tags`, {
+                    timeout: 5000,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (response.status === 200) {
+                    console.log(`✅ Ollama is ready after ${i + 1} attempts`);
+                    return;
+                }
+            }
+            catch (error) {
+                console.log(`⏳ Waiting for Ollama... (${i + 1}/${maxRetries})`);
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+        }
+        throw new Error('Ollama not ready after maximum retries');
+    }
+    async ensureModelExists() {
+        try {
+            const response = await axios_1.default.get(`${this.ollamaUrl}/api/tags`, {
+                timeout: this.HEALTH_TIMEOUT
+            });
+            const models = response.data?.models || [];
+            const modelExists = models.some((model) => {
+                const modelName = model.name || '';
+                return modelName === this.model || modelName.startsWith(this.model.split(':')[0]);
+            });
+            if (modelExists) {
+                console.log(`✅ Model ${this.model} already exists`);
+                return;
+            }
+            console.log(`📥 Pulling model: ${this.model} (this may take several minutes...)`);
+            const pullResponse = await axios_1.default.post(`${this.ollamaUrl}/api/pull`, {
+                name: this.model,
+                stream: false
+            }, {
+                timeout: 600000,
+                validateStatus: (status) => status < 500
+            });
+            if (pullResponse.status === 200) {
+                console.log(`✅ Model ${this.model} pulled successfully`);
+            }
+            else {
+                throw new Error(`Failed to pull model: ${pullResponse.status}`);
+            }
+        }
+        catch (error) {
+            console.error(`❌ Error ensuring model exists:`, error.message);
+            throw error;
+        }
+    }
+    async warmUpModel() {
+        try {
+            console.log(`🔥 Warming up model ${this.model}...`);
+            const warmupRequest = {
+                model: this.model,
+                prompt: 'Hello',
+                stream: false,
+                options: {
+                    num_predict: 5,
+                    temperature: 0.1
+                }
+            };
+            const response = await axios_1.default.post(`${this.ollamaUrl}/api/generate`, warmupRequest, {
+                timeout: 30000,
+                headers: { 'Content-Type': 'application/json' }
+            });
+            if (response.status === 200 && response.data.response) {
+                console.log(`✅ Model warmed up successfully`);
+            }
+        }
+        catch (error) {
+            console.warn(`⚠️ Model warmup failed (non-critical):`, error.message);
+        }
+    }
+    async checkHealth() {
+        const now = Date.now();
+        if (now - this.healthCheckCache.lastCheck < this.CACHE_TTL) {
+            return this.healthCheckCache.healthy;
+        }
+        try {
+            const response = await axios_1.default.get(`${this.ollamaUrl}/api/tags`, {
+                timeout: this.HEALTH_TIMEOUT,
+                headers: { 'Content-Type': 'application/json' }
+            });
+            if (response.status !== 200) {
+                throw new Error(`Ollama API returned status ${response.status}`);
+            }
+            const models = response.data?.models || [];
+            const modelAvailable = models.some((model) => {
+                const modelName = model.name || '';
+                return modelName === this.model || modelName.startsWith(this.model.split(':')[0]);
+            });
+            const healthy = modelAvailable && this.modelInitialized;
+            this.healthCheckCache = { healthy, lastCheck: now };
+            return healthy;
+        }
+        catch (error) {
+            console.error(`❌ Health check failed:`, error.message);
+            this.healthCheckCache = { healthy: false, lastCheck: now };
+            return false;
+        }
+    }
+    async generateResponse(messages) {
+        if (!this.modelInitialized) {
+            throw new Error('LLM service not ready. Model initialization in progress.');
+        }
+        const startTime = Date.now();
+        const requestId = Math.random().toString(36).substring(7);
+        try {
+            console.log(`🤖 [${requestId}] Starting generation with model: ${this.model}`);
+            const prompt = this.buildSimplePrompt(messages);
+            const requestPayload = {
+                model: this.model,
+                prompt: prompt,
+                stream: false,
+                options: {
+                    temperature: parseFloat(process.env.DEFAULT_TEMPERATURE || '0.7'),
+                    top_p: parseFloat(process.env.DEFAULT_TOP_P || '0.9'),
+                    num_predict: parseInt(process.env.DEFAULT_MAX_TOKENS || '200')
+                }
+            };
+            console.log(`🚀 [${requestId}] Sending request to Ollama`);
+            const response = await axios_1.default.post(`${this.ollamaUrl}/api/generate`, requestPayload, {
+                timeout: this.REQUEST_TIMEOUT,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                validateStatus: (status) => status < 500
+            });
+            const responseTime = Date.now() - startTime;
+            if (response.status !== 200) {
+                throw new Error(`Ollama returned status ${response.status}: ${JSON.stringify(response.data)}`);
+            }
+            if (!response.data.response) {
+                throw new Error('No response content from Ollama');
+            }
+            console.log(`✅ [${requestId}] Success in ${responseTime}ms`);
+            return {
+                content: response.data.response,
+                responseTime: responseTime
+            };
+        }
+        catch (error) {
+            const responseTime = Date.now() - startTime;
+            console.error(`❌ [${requestId}] Failed after ${responseTime}ms:`, {
+                error: error.message,
+                code: error.code
+            });
+            if (error.code === 'ECONNABORTED') {
+                throw new Error(`Request timed out after ${responseTime}ms`);
+            }
+            throw new Error(`LLM Error: ${error.message}`);
+        }
+    }
+    buildSimplePrompt(messages) {
+        const lastMessage = messages[messages.length - 1];
+        if (!lastMessage) {
+            return "Hello";
+        }
+        const prompt = `You are CoachGPT Pro, a fitness coach. Give helpful, concise advice (2-3 sentences).
+
+User: ${lastMessage.content}
+
+Coach:`;
+        return prompt;
+    }
+    async generateStreamResponse(messages) {
+        if (!this.modelInitialized) {
+            throw new Error('LLM service not ready. Model initialization in progress.');
+        }
+        const requestId = Math.random().toString(36).substring(7);
+        try {
+            console.log(`🌊 [${requestId}] Starting streaming generation`);
+            const prompt = this.buildSimplePrompt(messages);
+            const response = await axios_1.default.post(`${this.ollamaUrl}/api/generate`, {
+                model: this.model,
+                prompt: prompt,
+                stream: true,
+                options: {
+                    temperature: parseFloat(process.env.DEFAULT_TEMPERATURE || '0.7'),
+                    num_predict: parseInt(process.env.DEFAULT_MAX_TOKENS || '200')
+                }
+            }, {
+                responseType: 'stream',
+                timeout: this.REQUEST_TIMEOUT,
+                headers: { 'Content-Type': 'application/json' }
+            });
+            return this.parseStreamResponse(response.data);
+        }
+        catch (error) {
+            console.error(`❌ [${requestId}] Stream generation error:`, error.message);
+            throw new Error(`LLM Stream Error: ${error.message}`);
+        }
+    }
+    async *parseStreamResponse(stream) {
+        let buffer = '';
+        for await (const chunk of stream) {
+            buffer += chunk.toString();
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (const line of lines) {
+                if (line.trim()) {
+                    try {
+                        const parsed = JSON.parse(line);
+                        if (parsed.response) {
+                            yield parsed.response;
+                        }
+                        if (parsed.done)
+                            return;
+                    }
+                    catch (e) {
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+    async getAvailableModels() {
+        try {
+            const response = await axios_1.default.get(`${this.ollamaUrl}/api/tags`, {
+                timeout: this.HEALTH_TIMEOUT
+            });
+            return response.data.models?.map((model) => model.name) || [];
+        }
+        catch (error) {
+            console.error('Failed to get available models:', error);
+            return [];
+        }
+    }
+    async pullModel(modelName) {
+        try {
+            console.log(`📥 Pulling model: ${modelName}`);
+            await axios_1.default.post(`${this.ollamaUrl}/api/pull`, {
+                name: modelName,
+                stream: false
+            }, { timeout: 600000 });
+            console.log(`✅ Model ${modelName} pulled successfully`);
+            return true;
+        }
+        catch (error) {
+            console.error(`❌ Failed to pull model ${modelName}:`, error);
+            return false;
+        }
+    }
+    isReady() {
+        return this.modelInitialized;
+    }
+    async reinitialize() {
+        this.modelInitialized = false;
+        this.initializationPromise = null;
+        await this.initialize();
+    }
+    async testGeneration() {
+        try {
+            console.log('🧪 Running LLM service test...');
+            const testMessages = [
+                { role: 'user', content: 'Hi' }
+            ];
+            const response = await this.generateResponse(testMessages);
+            console.log('✅ Test generation successful:', {
+                responseLength: response.content.length,
+                duration: response.responseTime
+            });
+        }
+        catch (error) {
+            console.error('❌ Test generation failed:', error.message);
+            throw error;
+        }
+    }
+}
+exports.LLMService = LLMService;
+//# sourceMappingURL=llm.service.js.map
