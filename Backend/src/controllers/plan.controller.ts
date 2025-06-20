@@ -58,9 +58,12 @@ export const generatePlan = async (req: Request, res: Response): Promise<void> =
       
       // Progressive overload logic
       let { sets, reps } = baseConfig;
-      if (week === 2) reps += 1;
-      else if (week === 3) sets += 1;
-      else if (week === 4) reps += 1;
+      if (week === 2) reps += 2;
+      else if (week === 3) {
+        sets += 1;
+        reps -= 2;
+      }
+      else if (week === 4) reps += 2;
 
       for (let day = 0; day < daysPerWeek; day++) {
         const [primary, secondary] = MUSCLE_SPLIT[day % MUSCLE_SPLIT.length];
