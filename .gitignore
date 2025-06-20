@@ -94,3 +94,7 @@ backend/coverage.xml
 # === LLM ===
 LLM/node_modules/
 LLM/.env
+
+# === frontend ===
+coachgpt-pro-frontend/node_modules/
+coachgpt-pro-frontend/.env
