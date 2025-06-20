@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Docker Backend Testing Script for CoachGPT Pro
-# Location: Backend/test-docker.sh
+# Location: backend/test-docker.sh
 # Usage: chmod +x test-docker.sh && ./test-docker.sh
 
 echo "🚀 Starting CoachGPT Pro Backend Docker Tests..."

@@ -81,7 +81,7 @@ services:
   # LLM Microservice - SIMPLIFIED (No Database/Redis)
   llm-service:
     build:
-      context: ./LLM
+      context: ./llm
       dockerfile: Dockerfile
     container_name: coachgpt_llm_service
     environment:
