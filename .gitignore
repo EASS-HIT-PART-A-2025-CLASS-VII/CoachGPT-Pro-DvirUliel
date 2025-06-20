@@ -96,5 +96,5 @@ LLM/node_modules/
 LLM/.env
 
 # === frontend ===
-coachgpt-pro-frontend/node_modules/
-coachgpt-pro-frontend/.env
+frontend/node_modules/
+frontend/.env
