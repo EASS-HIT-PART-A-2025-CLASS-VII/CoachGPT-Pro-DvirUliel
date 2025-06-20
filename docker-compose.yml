@@ -27,7 +27,7 @@ services:
   # Backend API Service - INDEPENDENT (Only uses Database)
   backend:
     build:
-      context: ./Backend
+      context: ./backend
       dockerfile: Dockerfile
     container_name: coachgpt_backend
     environment:
