@@ -360,14 +360,6 @@ const WorkoutDay: React.FC<WorkoutDayProps> = ({
                 <span>{totalExercises} exercise{totalExercises !== 1 ? 's' : ''}</span>
                 <span className="text-gray-400">•</span>
                 <span>~{Math.round(estimatedDuration)} min</span>
-                {muscleGroups.length > 0 && (
-                  <>
-                    <span className="text-gray-400">•</span>
-                    <span className="text-blue-600 font-medium">
-                      {muscleGroups.map(group => getMuscleGroupDisplayName(group)).join(', ')}
-                    </span>
-                  </>
-                )}
               </div>
             </div>
           </div>
