@@ -39,48 +39,225 @@ class WorkoutService {
     }
   }
 
+  // Enhanced debugging for swap exercise
   async swapExercise(planId: string, request: ExerciseSwapRequest): Promise<{ message: string; updatedPlan: WorkoutPlan }> {
     try {
+      // Log the original request
+      console.log('🔄 SWAP REQUEST DEBUG:');
+      console.log('📋 Original request object:', request);
+      console.log('🆔 Plan ID:', planId);
+      console.log('🎯 API endpoint:', `/plan/${planId}/swap-exercise`);
+      
+      // Backend expects: { currentExercise, newExercise, weekNumber }
+      const backendRequest = {
+        currentExercise: request.currentExercise,
+        newExercise: request.newExercise,
+        weekNumber: request.weekNumber
+      };
+      
+      console.log('📤 Request payload being sent to backend:', JSON.stringify(backendRequest, null, 2));
+      console.log('🔍 Payload field types:');
+      console.log('  - currentExercise:', typeof backendRequest.currentExercise, '=', backendRequest.currentExercise);
+      console.log('  - newExercise:', typeof backendRequest.newExercise, '=', backendRequest.newExercise);
+      console.log('  - weekNumber:', typeof backendRequest.weekNumber, '=', backendRequest.weekNumber);
+      
+      // Validate request before sending
+      if (!backendRequest.currentExercise || typeof backendRequest.currentExercise !== 'string') {
+        throw new Error('Invalid currentExercise: must be a non-empty string');
+      }
+      if (!backendRequest.newExercise || typeof backendRequest.newExercise !== 'string') {
+        throw new Error('Invalid newExercise: must be a non-empty string');
+      }
+      if (!backendRequest.weekNumber || typeof backendRequest.weekNumber !== 'number' || backendRequest.weekNumber < 1 || backendRequest.weekNumber > 4) {
+        throw new Error('Invalid weekNumber: must be a number between 1 and 4');
+      }
+      
+      console.log('✅ Request validation passed, sending to backend...');
+      
       const response = await apiUtils.patch<{ status: string; message: string; updatedPlan: WorkoutPlan }>(
         `/plan/${planId}/swap-exercise`,
-        request
+        backendRequest
       );
+      
+      console.log('✅ Swap response received:', response);
+      
       return {
         message: response.message,
         updatedPlan: response.updatedPlan,
       };
     } catch (error: any) {
-      throw new Error(error.message || 'Failed to swap exercise');
+      console.error('🚨 SWAP ERROR DEBUGGING:');
+      console.error('🔍 Error object:', error);
+      console.error('📊 Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+        stack: error.stack
+      });
+      
+      // Log the actual HTTP request that failed
+      if (error.config) {
+        console.error('🌐 Failed HTTP request config:', {
+          method: error.config.method,
+          url: error.config.url,
+          baseURL: error.config.baseURL,
+          headers: error.config.headers,
+          data: error.config.data
+        });
+      }
+      
+      // Extract the most specific error message
+      const errorMessage = error?.response?.data?.error || 
+                          error?.response?.data?.message || 
+                          error.message || 
+                          'Failed to swap exercise';
+      
+      throw new Error(errorMessage);
     }
   }
 
+  // Enhanced debugging for add exercise
   async addExercise(planId: string, request: AddExerciseRequest): Promise<{ message: string; updatedPlan: WorkoutPlan }> {
     try {
+      console.log('➕ ADD REQUEST DEBUG:');
+      console.log('📋 Original request object:', request);
+      console.log('🆔 Plan ID:', planId);
+      console.log('🎯 API endpoint:', `/plan/${planId}/add-exercise`);
+      
+      // Backend expects: { weekNumber, muscleGroup, newExercise }
+      const backendRequest = {
+        weekNumber: request.weekNumber,
+        muscleGroup: request.muscleGroup,
+        newExercise: request.newExercise
+      };
+      
+      console.log('📤 Request payload being sent to backend:', JSON.stringify(backendRequest, null, 2));
+      console.log('🔍 Payload field types:');
+      console.log('  - weekNumber:', typeof backendRequest.weekNumber, '=', backendRequest.weekNumber);
+      console.log('  - muscleGroup:', typeof backendRequest.muscleGroup, '=', backendRequest.muscleGroup);
+      console.log('  - newExercise:', typeof backendRequest.newExercise, '=', backendRequest.newExercise);
+      
+      // Validate request
+      if (!backendRequest.weekNumber || typeof backendRequest.weekNumber !== 'number') {
+        throw new Error('Invalid weekNumber: must be a number');
+      }
+      if (!backendRequest.muscleGroup || typeof backendRequest.muscleGroup !== 'string') {
+        throw new Error('Invalid muscleGroup: must be a non-empty string');
+      }
+      if (!backendRequest.newExercise || typeof backendRequest.newExercise !== 'string') {
+        throw new Error('Invalid newExercise: must be a non-empty string');
+      }
+      
+      console.log('✅ Request validation passed, sending to backend...');
+      
       const response = await apiUtils.patch<{ status: string; message: string; updatedPlan: WorkoutPlan }>(
         `/plan/${planId}/add-exercise`,
-        request
+        backendRequest
       );
+      
+      console.log('✅ Add response received:', response);
+      
       return {
         message: response.message,
         updatedPlan: response.updatedPlan,
       };
     } catch (error: any) {
-      throw new Error(error.message || 'Failed to add exercise');
+      console.error('🚨 ADD ERROR DEBUGGING:');
+      console.error('🔍 Error object:', error);
+      console.error('📊 Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+      });
+      
+      if (error.config) {
+        console.error('🌐 Failed HTTP request config:', {
+          method: error.config.method,
+          url: error.config.url,
+          data: error.config.data
+        });
+      }
+      
+      const errorMessage = error?.response?.data?.error || 
+                          error?.response?.data?.message || 
+                          error.message || 
+                          'Failed to add exercise';
+      
+      throw new Error(errorMessage);
     }
   }
 
+  // Enhanced debugging for delete exercise
   async deleteExercise(planId: string, request: DeleteExerciseRequest): Promise<{ message: string; updatedPlan: WorkoutPlan }> {
     try {
+      console.log('🗑️ DELETE REQUEST DEBUG:');
+      console.log('📋 Original request object:', request);
+      console.log('🆔 Plan ID:', planId);
+      console.log('🎯 API endpoint:', `/plan/${planId}/delete-exercise`);
+      
+      // Backend expects: { weekNumber, muscleGroup, exerciseToDelete }
+      const backendRequest = {
+        weekNumber: request.weekNumber,
+        muscleGroup: request.muscleGroup,
+        exerciseToDelete: request.exerciseToDelete
+      };
+      
+      console.log('📤 Request payload being sent to backend:', JSON.stringify(backendRequest, null, 2));
+      console.log('🔍 Payload field types:');
+      console.log('  - weekNumber:', typeof backendRequest.weekNumber, '=', backendRequest.weekNumber);
+      console.log('  - muscleGroup:', typeof backendRequest.muscleGroup, '=', backendRequest.muscleGroup);
+      console.log('  - exerciseToDelete:', typeof backendRequest.exerciseToDelete, '=', backendRequest.exerciseToDelete);
+      
+      // Validate request
+      if (!backendRequest.weekNumber || typeof backendRequest.weekNumber !== 'number') {
+        throw new Error('Invalid weekNumber: must be a number');
+      }
+      if (!backendRequest.muscleGroup || typeof backendRequest.muscleGroup !== 'string') {
+        throw new Error('Invalid muscleGroup: must be a non-empty string');
+      }
+      if (!backendRequest.exerciseToDelete || typeof backendRequest.exerciseToDelete !== 'string') {
+        throw new Error('Invalid exerciseToDelete: must be a non-empty string');
+      }
+      
+      console.log('✅ Request validation passed, sending to backend...');
+      
       const response = await apiUtils.patch<{ status: string; message: string; updatedPlan: WorkoutPlan }>(
         `/plan/${planId}/delete-exercise`,
-        request
+        backendRequest
       );
+      
+      console.log('✅ Delete response received:', response);
+      
       return {
         message: response.message,
         updatedPlan: response.updatedPlan,
       };
     } catch (error: any) {
-      throw new Error(error.message || 'Failed to delete exercise');
+      console.error('🚨 DELETE ERROR DEBUGGING:');
+      console.error('🔍 Error object:', error);
+      console.error('📊 Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+      });
+      
+      if (error.config) {
+        console.error('🌐 Failed HTTP request config:', {
+          method: error.config.method,
+          url: error.config.url,
+          data: error.config.data
+        });
+      }
+      
+      const errorMessage = error?.response?.data?.error || 
+                          error?.response?.data?.message || 
+                          error.message || 
+                          'Failed to delete exercise';
+      
+      throw new Error(errorMessage);
     }
   }
 

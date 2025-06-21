@@ -3,9 +3,11 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { Exercise } from '../../types/exercise';
 import { WorkoutPlan } from '../../types/workout';
+import { ExerciseDetails } from '../../types/exercise';
 import workoutService from '../../services/workoutService';
 import LoadingSpinner from '../common/LoadingSpinner';
 import Modal from '../common/Modal';
+import ExerciseSelectionModal from './ExerciseSelectionModal';
 
 interface ExerciseCardProps {
   exercise: Exercise;
@@ -13,6 +15,7 @@ interface ExerciseCardProps {
   dayName: string;
   muscleGroups: string[];
   planId: string;
+  existingExercises?: string[]; // List of exercises already in the plan
   onPlanUpdated: (plan: WorkoutPlan) => void;
 }
 
@@ -75,12 +78,43 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
   dayName,
   muscleGroups,
   planId,
+  existingExercises = [],
   onPlanUpdated,
 }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showSwapModal, setShowSwapModal] = useState(false);
+
+  // Helper function to get muscle group display name
+  const getMuscleGroupDisplayName = useCallback((muscle: string): string => {
+    const displayNames: Record<string, string> = {
+      chest: 'Chest',
+      back: 'Back',
+      shoulders: 'Shoulders',
+      biceps: 'Biceps',
+      triceps: 'Triceps',
+      legs: 'Legs',
+      core: 'Core',
+      general: 'General',
+    };
+    return displayNames[muscle] || muscle.charAt(0).toUpperCase() + muscle.slice(1);
+  }, []);
+
+  // Helper function to get muscle group color
+  const getMuscleGroupColor = useCallback((muscle: string): string => {
+    const colorMap: Record<string, string> = {
+      chest: 'text-red-600 bg-red-50',
+      back: 'text-green-600 bg-green-50',
+      shoulders: 'text-yellow-600 bg-yellow-50',
+      biceps: 'text-blue-600 bg-blue-50',
+      triceps: 'text-purple-600 bg-purple-50',
+      legs: 'text-orange-600 bg-orange-50',
+      core: 'text-indigo-600 bg-indigo-50',
+      general: 'text-gray-600 bg-gray-50',
+    };
+    return colorMap[muscle] || 'text-gray-600 bg-gray-50';
+  }, []);
 
   // Get exercise icon based on name
   const getExerciseIcon = useCallback((exerciseName: string): string => {
@@ -95,51 +129,202 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
     return `${reps} reps`;
   }, []);
 
-  // Handle exercise swap
+  // Helper to determine muscle group for backend
+  const determineMuscleGroup = useCallback((): string => {
+    // Priority order: exercise.muscle_group -> muscleGroups array -> infer from day name
+    if (exercise.muscle_group) {
+      return exercise.muscle_group;
+    }
+    
+    if (muscleGroups && muscleGroups.length > 0) {
+      return muscleGroups[0];
+    }
+    
+    // Infer from day name as last resort
+    const dayLower = dayName.toLowerCase();
+    if (dayLower.includes('chest')) return 'chest';
+    if (dayLower.includes('back')) return 'back';
+    if (dayLower.includes('shoulder')) return 'shoulders';
+    if (dayLower.includes('bicep')) return 'biceps';
+    if (dayLower.includes('tricep')) return 'triceps';
+    if (dayLower.includes('leg')) return 'legs';
+    if (dayLower.includes('core') || dayLower.includes('abs')) return 'core';
+    
+    return 'general'; // fallback
+  }, [exercise.muscle_group, muscleGroups, dayName]);
+
+  // Handle exercise swap - open modal
   const handleSwapExercise = useCallback(async () => {
     setShowSwapModal(true);
-    // TODO: Implement exercise swap functionality
-    // This would typically open a modal with alternative exercises
-    console.log('Swap exercise:', { 
-      exercise: exercise.name, 
-      week: weekNumber, 
-      day: dayName,
-      muscleGroups 
-    });
-    toast('Exercise swap modal coming soon!', {
-      icon: 'ℹ️',
-      duration: 3000,
-    });
-  }, [exercise.name, weekNumber, dayName, muscleGroups]);
+  }, []);
 
-  // Handle exercise deletion
+  // Handle exercise swap confirmation - FIXED with proper state management
+  const handleSwapConfirm = useCallback(async (selectedExercise: ExerciseDetails) => {
+    if (!planId) {
+      toast.error('Plan ID is required to swap exercise');
+      return;
+    }
+  
+    try {
+      setIsSwapping(true);
+  
+      console.log('🔄 SWAP OPERATION STARTING - FULL DEBUG');
+      console.log('📋 Current exercise from props:', exercise.name);
+      console.log('🆕 New exercise selected:', selectedExercise.name);
+      console.log('📅 Week number:', weekNumber);
+      console.log('🆔 Plan ID:', planId);
+      console.log('🏠 Day name:', dayName);
+      console.log('💪 Muscle groups:', muscleGroups);
+  
+      // CRITICAL: Let's fetch the current plan state to see what exercises actually exist
+      console.log('🔍 FETCHING CURRENT PLAN STATE FROM BACKEND...');
+      let currentPlan;
+      try {
+        const planResponse = await workoutService.getPlanById(planId);
+        currentPlan = planResponse.plan;
+        console.log('📋 Current plan from backend:', currentPlan);
+        
+        // Find the specific week and day
+        const targetWeek = currentPlan.plan_data?.weeks?.find(w => w.week === weekNumber);
+        console.log(`📅 Week ${weekNumber} data:`, targetWeek);
+        
+        if (targetWeek) {
+          console.log('📋 All exercises in week:');
+          targetWeek.days.forEach((day, dayIndex) => {
+            console.log(`  Day ${dayIndex + 1} (${day.day}):`, day.exercises?.map(ex => ex.name || ex));
+          });
+          
+          // Check if current exercise actually exists
+          const exerciseExists = targetWeek.days.some(day => 
+            day.exercises?.some(ex => 
+              (typeof ex === 'string' ? ex : ex.name) === exercise.name
+            )
+          );
+          
+          console.log(`🔍 Does "${exercise.name}" exist in current plan?`, exerciseExists);
+          
+          if (!exerciseExists) {
+            console.error(`❌ PROBLEM FOUND: "${exercise.name}" does not exist in the current plan!`);
+            console.log('🔍 Available exercises in the plan:');
+            targetWeek.days.forEach(day => {
+              day.exercises?.forEach(ex => {
+                const exerciseName = typeof ex === 'string' ? ex : ex.name;
+                console.log(`  - "${exerciseName}"`);
+              });
+            });
+            
+            toast.error(`Exercise "${exercise.name}" no longer exists in your plan. Please refresh the page.`);
+            return;
+          }
+        }
+        
+      } catch (planFetchError) {
+        console.error('❌ Failed to fetch current plan:', planFetchError);
+        toast.error('Failed to verify current plan state. Please refresh the page.');
+        return;
+      }
+  
+      // If we get here, the exercise exists - proceed with swap
+      const swapRequest = {
+        currentExercise: exercise.name,
+        newExercise: selectedExercise.name,
+        weekNumber: weekNumber
+      };
+  
+      console.log('📤 Sending swap request:', swapRequest);
+  
+      const response = await workoutService.swapExercise(planId, swapRequest);
+  
+      console.log('✅ Swap successful, response:', response);
+  
+      // Update the plan state immediately
+      if (response.updatedPlan) {
+        console.log('🔄 Updating plan state with:', response.updatedPlan);
+        onPlanUpdated(response.updatedPlan);
+      } else {
+        console.warn('⚠️ No updated plan in response, fetching fresh plan...');
+        const freshPlan = await workoutService.getPlanById(planId);
+        onPlanUpdated(freshPlan.plan);
+      }
+  
+      toast.success(response.message || 'Exercise swapped successfully');
+      setShowSwapModal(false);
+      
+      console.log('✅ Swap operation completed successfully');
+    } catch (error: any) {
+      console.error('🚨 Swap failed:', error);
+      
+      let errorMessage = 'Failed to swap exercise';
+      
+      if (error.message.includes('not found')) {
+        errorMessage = 'Exercise or workout plan not found - please refresh the page';
+      } else if (error.message.includes('already exists')) {
+        errorMessage = 'This exercise is already in your workout';
+      } else if (error.message.includes('muscle group')) {
+        errorMessage = 'No suitable workout day found for this muscle group';
+      } else {
+        errorMessage = error.message || errorMessage;
+      }
+      
+      toast.error(errorMessage);
+    } finally {
+      setIsSwapping(false);
+    }
+  }, [planId, weekNumber, exercise.name, onPlanUpdated, dayName, muscleGroups]);
+  // Handle exercise deletion - FIXED with proper state management
   const handleDeleteExercise = useCallback(async () => {
     if (!planId) {
       toast.error('Plan ID is required to delete exercise');
       return;
     }
 
-    const primaryMuscleGroup = muscleGroups[0] || 'general';
-
     try {
       setIsDeleting(true);
-      const response = await workoutService.deleteExercise(planId, {
-        weekNumber,
-        muscleGroup: primaryMuscleGroup,
-        exerciseToDelete: exercise.name,
-      });
+
+      const muscleGroup = determineMuscleGroup();
+
+      console.log('🗑️ DELETE OPERATION STARTING');
+      console.log('📋 Exercise to delete:', exercise.name);
+      console.log('💪 Muscle group:', muscleGroup);
+      console.log('📅 Week number:', weekNumber);
+      console.log('🆔 Plan ID:', planId);
+
+      // Backend expects: { weekNumber, muscleGroup, exerciseToDelete }
+      const deleteRequest = {
+        weekNumber: weekNumber,
+        muscleGroup: muscleGroup,
+        exerciseToDelete: exercise.name
+      };
+
+      console.log('📤 Sending delete request:', deleteRequest);
+
+      const response = await workoutService.deleteExercise(planId, deleteRequest);
+
+      console.log('✅ Delete successful, response:', response);
+
+      // CRITICAL: Update the plan state immediately
+      if (response.updatedPlan) {
+        console.log('🔄 Updating plan state with:', response.updatedPlan);
+        onPlanUpdated(response.updatedPlan);
+      } else {
+        console.warn('⚠️ No updated plan in response, fetching fresh plan...');
+        // Fallback: fetch fresh plan if no updated plan in response
+        const freshPlan = await workoutService.getPlanById(planId);
+        onPlanUpdated(freshPlan.plan);
+      }
 
       toast.success(response.message || 'Exercise removed successfully');
-      onPlanUpdated(response.updatedPlan);
       setShowDeleteModal(false);
+      
+      console.log('✅ Delete operation completed successfully');
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to delete exercise';
+      console.error('🚨 Delete failed:', error);
+      const errorMessage = error.message || 'Failed to delete exercise';
       toast.error(errorMessage);
-      console.error('Delete exercise error:', error);
     } finally {
       setIsDeleting(false);
     }
-  }, [planId, weekNumber, muscleGroups, exercise.name, onPlanUpdated]);
+  }, [planId, weekNumber, exercise.name, determineMuscleGroup, onPlanUpdated]);
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback((event: React.KeyboardEvent, action: () => void) => {
@@ -247,19 +432,32 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
             </div>
           )}
 
-          {/* Additional exercise properties */}
-          {exercise.difficulty && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">Difficulty:</span>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                exercise.difficulty === 'beginner' ? 'bg-green-100 text-green-800' :
-                exercise.difficulty === 'intermediate' ? 'bg-yellow-100 text-yellow-800' :
-                'bg-red-100 text-red-800'
-              }`}>
-                {exercise.difficulty}
-              </span>
-            </div>
-          )}
+          {/* Difficulty and Muscle Group */}
+          <div className="pt-3 border-t border-gray-100 space-y-2">
+            {/* Difficulty Level */}
+            {exercise.difficulty && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Difficulty:</span>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  exercise.difficulty === 'beginner' ? 'bg-green-100 text-green-800' :
+                  exercise.difficulty === 'intermediate' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-red-100 text-red-800'
+                }`}>
+                  {exercise.difficulty}
+                </span>
+              </div>
+            )}
+            
+            {/* Muscle Group */}
+            {(exercise.muscle_group || muscleGroups.length > 0) && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Muscle Group:</span>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getMuscleGroupColor(exercise.muscle_group || muscleGroups[0])}`}>
+                  {getMuscleGroupDisplayName(exercise.muscle_group || muscleGroups[0])}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </motion.div>
 
@@ -294,27 +492,18 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
         </div>
       </Modal>
 
-      {/* Swap Exercise Modal - Placeholder */}
-      <Modal
+      {/* Exercise Swap Modal */}
+      <ExerciseSelectionModal
         isOpen={showSwapModal}
         onClose={() => setShowSwapModal(false)}
+        onSelect={handleSwapConfirm}
         title="Swap Exercise"
-      >
-        <div className="p-6">
-          <p className="text-gray-600 mb-6">
-            Exercise swap functionality will be implemented here. You can replace <strong>"{exercise.name}"</strong> 
-            with similar exercises targeting the same muscle groups.
-          </p>
-          <div className="flex justify-end">
-            <button
-              onClick={() => setShowSwapModal(false)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </Modal>
+        muscleGroup={exercise.muscle_group}
+        difficulty={exercise.difficulty}
+        currentExercise={exercise.name}
+        existingExercises={existingExercises}
+        mode="swap"
+      />
     </>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { WorkoutWeek as WorkoutWeekType, WorkoutPlan } from '../../types/workout';
 import WorkoutDay from './WorkoutDay';
@@ -6,11 +6,33 @@ import WorkoutDay from './WorkoutDay';
 interface WorkoutWeekProps {
   week: WorkoutWeekType;
   planId: string;
+  fullPlan?: WorkoutPlan; // Pass the full plan to extract all exercises
   onPlanUpdated: (plan: WorkoutPlan) => void;
 }
 
-const WorkoutWeek: React.FC<WorkoutWeekProps> = ({ week, planId, onPlanUpdated }) => {
+const WorkoutWeek: React.FC<WorkoutWeekProps> = ({ week, planId, fullPlan, onPlanUpdated }) => {
   const [isExpanded, setIsExpanded] = useState(week.week === 1); // First week expanded by default
+
+  // Extract all exercise names from the entire plan
+  const allPlanExercises = useMemo((): string[] => {
+    if (!fullPlan?.plan_data?.weeks) return [];
+    
+    const exerciseNames: string[] = [];
+    
+    fullPlan.plan_data.weeks.forEach(weekData => {
+      weekData.days.forEach(day => {
+        if (day.exercises) {
+          day.exercises.forEach(exercise => {
+            if (exercise.name && exercise.name.trim() !== '') {
+              exerciseNames.push(exercise.name);
+            }
+          });
+        }
+      });
+    });
+    
+    return exerciseNames;
+  }, [fullPlan]);
 
   return (
     <motion.div
@@ -75,6 +97,7 @@ const WorkoutWeek: React.FC<WorkoutWeekProps> = ({ week, planId, onPlanUpdated }
                   day={day}
                   weekNumber={week.week}
                   planId={planId}
+                  allPlanExercises={allPlanExercises}
                   onPlanUpdated={onPlanUpdated}
                 />
               ))}

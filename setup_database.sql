@@ -30,7 +30,7 @@ CREATE TABLE workout_plans (
 );
 
 -- Plan action table
-CREATE TABLE plan_action (
+CREATE TABLE plan_actions (
     id SERIAL PRIMARY KEY,
     plan_id INT NOT NULL,
     action_type TEXT NOT NULL, -- 'swap', 'add', 'delete'
@@ -174,4 +174,4 @@ CREATE INDEX idx_exercises_muscle_group ON exercises(muscle_group);
 CREATE INDEX idx_exercises_difficulty ON exercises(difficulty);
 CREATE INDEX idx_exercises_equipment ON exercises(equipment);
 CREATE INDEX idx_workout_plans_user_id ON workout_plans(user_id);
-CREATE INDEX idx_plan_action_plan_id ON plan_action(plan_id);
+CREATE INDEX idx_plan_actions_plan_id ON plan_actions(plan_id);

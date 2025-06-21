@@ -11,6 +11,7 @@ import WorkoutWeek from '../components/workout/WorkoutWeek';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
+import PlanHistoryModal from '../components/workout/PlanHistoryModal';
 
 const WorkoutPlanPage: React.FC = () => {
   const { user } = useAuth();
@@ -20,6 +21,7 @@ const WorkoutPlanPage: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch user's current plan
@@ -32,14 +34,44 @@ const WorkoutPlanPage: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
+      
+      console.log('🔍 Fetching plan for user:', user.id);
       const plan = await workoutService.getUserPlan(user.id);
+      
+      console.log('📋 Raw plan from API:', plan);
+      
+      // Validate plan structure
+      if (!plan || !plan.plan_data || !plan.plan_data.weeks) {
+        console.error('❌ Invalid plan structure received:', plan);
+        setError('Invalid workout plan data received');
+        return;
+      }
+      
+      console.log('✅ Plan structure validated:', {
+        id: plan.id,
+        goal: plan.goal,
+        days_per_week: plan.days_per_week,
+        weeks_count: plan.plan_data.weeks?.length || 0
+      });
+      
       setCurrentPlan(plan);
     } catch (error: any) {
-      console.error('Error fetching plan:', error);
-      // Don't show error toast for "no plan found" - this is expected for new users
-      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to load workout plan';
-      if (!errorMessage.toLowerCase().includes('no workout plan found') && 
-          !errorMessage.toLowerCase().includes('not found')) {
+      console.error('🚨 Error fetching plan:', error);
+      
+      // Handle "no plan found" gracefully - this is expected for new users
+      const errorMessage = error?.response?.data?.error || 
+                          error?.response?.data?.message || 
+                          error?.message || 
+                          'Failed to load workout plan';
+      
+      if (errorMessage.toLowerCase().includes('no workout plan found') || 
+          errorMessage.toLowerCase().includes('not found') ||
+          error?.response?.status === 404) {
+        console.log('ℹ️ No plan found for user - showing welcome state');
+        setCurrentPlan(null);
+        setError(null);
+      } else {
+        console.error('❌ Real error occurred:', errorMessage);
         setError(errorMessage);
         toast.error(errorMessage);
       }
@@ -52,15 +84,28 @@ const WorkoutPlanPage: React.FC = () => {
     fetchUserPlan();
   }, [fetchUserPlan]);
 
+  // Handle plan generation completion
   const handlePlanGenerated = useCallback((newPlan: WorkoutPlan) => {
+    console.log('🎉 New plan generated:', newPlan);
     setCurrentPlan(newPlan);
     setShowGenerator(false);
     setError(null);
     toast.success('New workout plan generated successfully!');
   }, []);
 
+  // Handle plan updates (from exercise add/swap/delete operations)
   const handlePlanUpdated = useCallback((updatedPlan: WorkoutPlan) => {
+    console.log('🔄 Plan updated:', updatedPlan);
+    
+    // Validate the updated plan structure
+    if (!updatedPlan || !updatedPlan.plan_data || !updatedPlan.plan_data.weeks) {
+      console.error('❌ Invalid updated plan structure:', updatedPlan);
+      toast.error('Invalid plan update received');
+      return;
+    }
+    
     setCurrentPlan(updatedPlan);
+    console.log('✅ Plan state updated successfully');
   }, []);
 
   const handleDeletePlan = useCallback(async () => {
@@ -68,14 +113,21 @@ const WorkoutPlanPage: React.FC = () => {
 
     try {
       setIsDeleting(true);
+      console.log('🗑️ Deleting plan:', currentPlan.id);
+      
       await workoutService.deletePlan(currentPlan.id);
       setCurrentPlan(null);
       setShowDeleteModal(false);
       toast.success('Workout plan deleted successfully');
+      
+      console.log('✅ Plan deleted successfully');
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to delete workout plan';
+      const errorMessage = error?.response?.data?.error || 
+                          error?.response?.data?.message || 
+                          error?.message || 
+                          'Failed to delete workout plan';
       toast.error(errorMessage);
-      console.error('Delete plan error:', error);
+      console.error('🚨 Delete plan error:', error);
     } finally {
       setIsDeleting(false);
     }
@@ -86,21 +138,23 @@ const WorkoutPlanPage: React.FC = () => {
     fetchUserPlan();
   }, [fetchUserPlan]);
 
+  // Updated to show history modal instead of toast
   const showHistoryFeature = useCallback(() => {
-    toast('Plan history feature coming soon!', {
-      icon: 'ℹ️',
-      duration: 3000,
-    });
-  }, []);
+    if (!currentPlan?.id) {
+      toast.error('No workout plan available to view history');
+      return;
+    }
+    setShowHistoryModal(true);
+  }, [currentPlan]);
 
-  // Calculate plan statistics
-  const planStats = currentPlan ? {
-    totalWeeks: currentPlan.plan_data?.weeks?.length || 0,
-    totalWorkouts: currentPlan.plan_data?.weeks?.reduce((total, week) => 
-      total + (week.days?.length || 0), 0) || 0,
-    totalExercises: currentPlan.plan_data?.weeks?.reduce((total, week) => 
+  // Calculate plan statistics with null safety
+  const planStats = currentPlan?.plan_data?.weeks ? {
+    totalWeeks: currentPlan.plan_data.weeks.length,
+    totalWorkouts: currentPlan.plan_data.weeks.reduce((total, week) => 
+      total + (week.days?.length || 0), 0),
+    totalExercises: currentPlan.plan_data.weeks.reduce((total, week) => 
       total + (week.days?.reduce((dayTotal, day) => 
-        dayTotal + (day.exercises?.length || 0), 0) || 0), 0) || 0,
+        dayTotal + (day.exercises?.length || 0), 0) || 0), 0),
   } : null;
 
   if (isLoading) {
@@ -161,15 +215,19 @@ const WorkoutPlanPage: React.FC = () => {
                 </p>
               </div>
 
+              {/* Action buttons when user has a plan */}
               <div className="mt-4 sm:mt-0 flex flex-wrap gap-3">
                 {currentPlan && (
                   <>
                     <Button
                       variant="secondary"
-                      onClick={() => setShowGenerator(true)}
-                      disabled={isGenerating}
+                      onClick={showHistoryFeature}
+                      className="flex items-center space-x-2"
                     >
-                      Generate New Plan
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>View History</span>
                     </Button>
                     <Button
                       variant="danger"
@@ -256,7 +314,7 @@ const WorkoutPlanPage: React.FC = () => {
               />
             </motion.div>
           ) : currentPlan ? (
-            // Current Plan Display
+            // Current Plan Display - FIXED DATA FLOW
             <motion.div
               key="plan"
               initial={{ opacity: 0, y: 20 }}
@@ -302,37 +360,38 @@ const WorkoutPlanPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Workout Weeks */}
+              {/* Workout Weeks - FIXED RENDERING */}
               <div className="space-y-6">
-                {currentPlan.plan_data?.weeks?.map((week, index) => (
-                  <WorkoutWeek
-                    key={week.week || index}
-                    week={week}
-                    planId={currentPlan.id}
-                    onPlanUpdated={handlePlanUpdated}
-                  />
-                )) || (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>No workout weeks found in this plan.</p>
+                {currentPlan.plan_data?.weeks && currentPlan.plan_data.weeks.length > 0 ? (
+                  currentPlan.plan_data.weeks.map((week, index) => {
+                    console.log(`🔄 Rendering week ${week.week || index + 1}:`, week);
+                    
+                    return (
+                      <WorkoutWeek
+                        key={`week-${week.week || index}`}
+                        week={week}
+                        planId={currentPlan.id}
+                        fullPlan={currentPlan}
+                        onPlanUpdated={handlePlanUpdated}
+                      />
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-8 text-gray-500 bg-white rounded-lg border">
+                    <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    <p className="text-lg font-medium text-gray-900 mb-2">No workout weeks found</p>
+                    <p className="text-sm text-gray-500">There seems to be an issue with your plan data.</p>
+                    <Button 
+                      variant="primary" 
+                      onClick={() => setShowGenerator(true)}
+                      className="mt-4"
+                    >
+                      Generate New Plan
+                    </Button>
                   </div>
                 )}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row justify-center gap-4 pt-8">
-                <Button
-                  variant="primary"
-                  onClick={() => setShowGenerator(true)}
-                  disabled={isGenerating}
-                >
-                  Generate New Plan
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={showHistoryFeature}
-                >
-                  View History
-                </Button>
               </div>
             </motion.div>
           ) : null}
@@ -389,6 +448,14 @@ const WorkoutPlanPage: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Plan History Modal */}
+      <PlanHistoryModal
+        isOpen={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+        planId={currentPlan?.id || ''}
+        planGoal={currentPlan?.goal}
+      />
     </div>
   );
 };

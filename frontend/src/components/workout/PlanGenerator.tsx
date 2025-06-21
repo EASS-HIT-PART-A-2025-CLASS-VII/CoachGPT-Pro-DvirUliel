@@ -38,10 +38,11 @@ const PlanGenerator: React.FC<PlanGeneratorProps> = ({
     formState: { errors },
     watch,
     setError,
+    setValue,
   } = useForm<FormData>({
     defaultValues: {
       goal: 'general_fitness',
-      daysPerWeek: 3,
+      daysPerWeek: 4, // Changed default to 4
       difficultyLevel: 'beginner',
     },
     mode: 'onChange'
@@ -124,7 +125,7 @@ const PlanGenerator: React.FC<PlanGeneratorProps> = ({
   };
 
   const nextStep = () => {
-    if (step < 3) setStep(step + 1);
+    if (step < 4) setStep(step + 1);
   };
 
   const prevStep = () => {
@@ -139,6 +140,8 @@ const PlanGenerator: React.FC<PlanGeneratorProps> = ({
         return !!watchedValues.daysPerWeek && watchedValues.daysPerWeek >= 1;
       case 3:
         return !!watchedValues.difficultyLevel;
+      case 4:
+        return !!watchedValues.goal && !!watchedValues.daysPerWeek && !!watchedValues.difficultyLevel;
       default:
         return false;
     }
@@ -148,7 +151,13 @@ const PlanGenerator: React.FC<PlanGeneratorProps> = ({
     if (days <= 2) return "Great for beginners! Focus on full-body workouts.";
     if (days === 3) return "Perfect balance for most people. Allows good recovery time.";
     if (days === 4) return "Excellent frequency for serious progress and muscle growth.";
+    if (days === 5) return "Advanced training frequency. Great for experienced athletes.";
     return "High frequency training - make sure you get adequate rest!";
+  };
+
+  // Handle day selection
+  const handleDaySelection = (day: number) => {
+    setValue('daysPerWeek', day);
   };
 
   return (
@@ -168,14 +177,14 @@ const PlanGenerator: React.FC<PlanGeneratorProps> = ({
           {/* Progress Bar */}
           <div className="mt-6">
             <div className="flex items-center justify-between text-sm">
-              <span>Step {step} of 3</span>
-              <span>{Math.round((step / 3) * 100)}% Complete</span>
+              <span>Step {step} of 4</span>
+              <span>{Math.round((step / 4) * 100)}% Complete</span>
             </div>
             <div className="mt-2 bg-white bg-opacity-20 rounded-full h-2">
               <motion.div
                 className="bg-white rounded-full h-2"
                 initial={{ width: 0 }}
-                animate={{ width: `${(step / 3) * 100}%` }}
+                animate={{ width: `${(step / 4) * 100}%` }}
                 transition={{ duration: 0.3 }}
               />
             </div>
@@ -252,28 +261,24 @@ const PlanGenerator: React.FC<PlanGeneratorProps> = ({
                 </h3>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                   {WORKOUT_CONFIG.DAYS_PER_WEEK.map((option) => (
-                    <label
+                    <button
                       key={option.value}
-                      className={`relative cursor-pointer border-2 rounded-lg p-4 text-center transition-all ${
+                      type="button"
+                      onClick={() => handleDaySelection(option.value)}
+                      className={`relative border-2 rounded-lg p-4 text-center transition-all ${
                         watchedValues.daysPerWeek === option.value
                           ? 'border-blue-600 bg-blue-50 text-blue-600'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
-                      <input
-                        {...register('daysPerWeek', { 
-                          required: 'Please select training frequency',
-                          valueAsNumber: true,
-                          min: { value: 1, message: 'Must train at least 1 day per week' },
-                          max: { value: 7, message: 'Cannot train more than 7 days per week' }
-                        })}
-                        type="radio"
-                        value={option.value}
-                        className="sr-only"
-                      />
                       <div className="font-semibold text-lg">{option.value}</div>
                       <div className="text-sm text-gray-500">
                         {option.value === 1 ? 'Day' : 'Days'}
+                        {option.value === 4 && (
+                          <div className="text-xs text-blue-600 font-medium mt-1">
+                            (Recommended)
+                          </div>
+                        )}
                       </div>
                       {watchedValues.daysPerWeek === option.value && (
                         <div className="absolute -top-2 -right-2">
@@ -284,9 +289,21 @@ const PlanGenerator: React.FC<PlanGeneratorProps> = ({
                           </div>
                         </div>
                       )}
-                    </label>
+                    </button>
                   ))}
                 </div>
+                
+                {/* Hidden input for form validation */}
+                <input
+                  {...register('daysPerWeek', { 
+                    required: 'Please select training frequency',
+                    min: { value: 1, message: 'Must train at least 1 day per week' },
+                    max: { value: 7, message: 'Cannot train more than 7 days per week' }
+                  })}
+                  type="hidden"
+                  value={watchedValues.daysPerWeek}
+                />
+                
                 {errors.daysPerWeek && (
                   <p className="mt-2 text-sm text-red-600">{errors.daysPerWeek.message}</p>
                 )}
@@ -308,6 +325,15 @@ const PlanGenerator: React.FC<PlanGeneratorProps> = ({
                       </p>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Auto advance to next step when days selected */}
+              {watchedValues.daysPerWeek && (
+                <div className="text-center">
+                  <p className="text-sm text-gray-600 mb-4">
+                    Perfect! You've selected {watchedValues.daysPerWeek} training days per week.
+                  </p>
                 </div>
               )}
             </motion.div>
@@ -366,19 +392,92 @@ const PlanGenerator: React.FC<PlanGeneratorProps> = ({
                   <p className="mt-2 text-sm text-red-600">{errors.difficultyLevel.message}</p>
                 )}
               </div>
+            </motion.div>
+          )}
 
-              {/* Summary */}
-              {watchedValues.goal && watchedValues.daysPerWeek && watchedValues.difficultyLevel && (
+          {/* Step 4: Summary and Confirmation */}
+          {step === 4 && (
+            <motion.div
+              key="step4"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-6"
+            >
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Review Your Workout Plan
+                </h3>
+                
+                {/* Plan Summary */}
+                <div className="bg-gradient-to-r from-blue-50 to-orange-50 border border-blue-200 rounded-lg p-6">
+                  <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
+                    <svg className="w-5 h-5 text-blue-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                    </svg>
+                    Your Personalized 4-Week Program
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center">
+                        <span className="text-2xl mr-3">
+                          {WORKOUT_CONFIG.GOALS.find(g => g.value === watchedValues.goal)?.icon}
+                        </span>
+                        <div>
+                          <div className="font-medium text-gray-900">Primary Goal</div>
+                          <div className="text-gray-600">
+                            {WORKOUT_CONFIG.GOALS.find(g => g.value === watchedValues.goal)?.label}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center">
+                        <span className="text-2xl mr-3">📅</span>
+                        <div>
+                          <div className="font-medium text-gray-900">Training Frequency</div>
+                          <div className="text-gray-600">
+                            {watchedValues.daysPerWeek} days per week
+                            {watchedValues.daysPerWeek === 4 && (
+                              <span className="text-blue-600 font-medium"> (Recommended)</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-center">
+                        <span className="text-2xl mr-3">💪</span>
+                        <div>
+                          <div className="font-medium text-gray-900">Difficulty Level</div>
+                          <div className="text-gray-600">
+                            {WORKOUT_CONFIG.DIFFICULTY_LEVELS.find(d => d.value === watchedValues.difficultyLevel)?.label}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center">
+                        <span className="text-2xl mr-3">⏱️</span>
+                        <div>
+                          <div className="font-medium text-gray-900">Program Duration</div>
+                          <div className="text-gray-600">4-week progressive plan</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* What to Expect */}
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <h4 className="font-medium text-gray-900 mb-2">Plan Summary:</h4>
+                  <h5 className="font-medium text-gray-900 mb-2">What to expect:</h5>
                   <ul className="text-sm text-gray-600 space-y-1">
-                    <li>• Goal: {WORKOUT_CONFIG.GOALS.find(g => g.value === watchedValues.goal)?.label}</li>
-                    <li>• Frequency: {watchedValues.daysPerWeek} days per week</li>
-                    <li>• Level: {WORKOUT_CONFIG.DIFFICULTY_LEVELS.find(d => d.value === watchedValues.difficultyLevel)?.label}</li>
-                    <li>• Duration: 4-week progressive program</li>
+                    <li>• Customized exercises based on your goal and level</li>
+                    <li>• Progressive difficulty increase each week</li>
+                    <li>• Proper rest days for optimal recovery</li>
+                    <li>• Exercise instructions and form tips</li>
                   </ul>
                 </div>
-              )}
+              </div>
             </motion.div>
           )}
 
@@ -407,7 +506,7 @@ const PlanGenerator: React.FC<PlanGeneratorProps> = ({
                 Cancel
               </Button>
 
-              {step < 3 ? (
+              {step < 4 ? (
                 <Button
                   type="button"
                   variant="primary"
