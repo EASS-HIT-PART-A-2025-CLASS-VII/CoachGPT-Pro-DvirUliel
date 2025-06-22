@@ -25,7 +25,7 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Backend API Service - INDEPENDENT (Only uses Database)
+  # Backend API Service 
   backend:
     build:
       context: ./backend
@@ -40,15 +40,12 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=password
       - JWT_SECRET=coachgpt_secret_4231
-      # Optional: LLM service URL for future integration (no dependency)
-      - LLM_SERVICE_URL=http://llm-service:5003
     ports:
       - "5002:5002"
     depends_on:
       # Backend only depends on its database
       postgres:
         condition: service_healthy
-      # NO dependency on redis or llm-service!
     networks:
       - coachgpt_network
     healthcheck:
@@ -58,7 +55,7 @@ services:
       retries: 3
     restart: unless-stopped
 
-  # Ollama LLM Engine - INDEPENDENT
+  # Ollama LLM Engine 
   ollama:
     image: ollama/ollama:latest
     container_name: coachgpt_ollama
@@ -79,7 +76,7 @@ services:
       retries: 5
       start_period: 60s
 
-  # LLM Microservice - SIMPLIFIED (No Database/Redis)
+  # LLM Microservice 
   llm-service:
     build:
       context: ./llm
@@ -99,16 +96,13 @@ services:
       - DEFAULT_TOP_P=0.9
       - DEFAULT_MAX_TOKENS=200
       - LLM_TIMEOUT=70000              # 70 seconds
-      
-      # Remove all database/redis environment variables
-      
+            
     ports:
       - "5003:5003"
     depends_on:
       # LLM service only depends on Ollama
       ollama:
         condition: service_healthy
-      # NO dependency on postgres or redis!
     networks:
       - coachgpt_network
     healthcheck:
@@ -117,6 +111,41 @@ services:
       timeout: 10s
       retries: 3
       start_period: 180s
+    restart: unless-stopped
+
+  # Frontend React Application 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: coachgpt_frontend
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - REACT_APP_BACKEND_URL=http://localhost:5002
+      - REACT_APP_LLM_URL=http://localhost:5003
+      - TSC_COMPILE_ON_ERROR=true
+      - ESLINT_NO_DEV_ERRORS=true
+      - DISABLE_ESLINT_PLUGIN=true
+      - GENERATE_SOURCEMAP=false
+      - FAST_REFRESH=true
+      - SKIP_PREFLIGHT_CHECK=true
+    ports:
+      - "3001:3001"
+    depends_on:
+      # Frontend depends on backend and LLM service being healthy
+      backend:
+        condition: service_healthy
+      llm-service:
+        condition: service_healthy
+    networks:
+      - coachgpt_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     restart: unless-stopped
 
 networks:

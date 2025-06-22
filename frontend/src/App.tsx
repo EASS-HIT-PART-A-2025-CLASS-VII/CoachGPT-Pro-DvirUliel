@@ -50,11 +50,6 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Debug info */}
-      <div className="fixed top-0 right-0 bg-black text-white text-xs p-2 z-50">
-        User: {user ? 'Logged in' : 'Not logged in'} | Loading: {isLoading ? 'Yes' : 'No'}
-      </div>
-      
       {/* Toast Notifications */}
       <Toaster
         position="top-right"

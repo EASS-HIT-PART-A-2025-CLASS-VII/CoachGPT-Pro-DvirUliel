@@ -87,7 +87,7 @@ const Sidebar: React.FC = () => {
                     <h1 className="text-lg font-bold text-gray-800">
                       Coach<span className="text-orange-500">GPT</span>
                     </h1>
-                    <p className="text-xs text-gray-500">Pro</p>
+                    <p className="text-xs text-orange-500 text-center">Pro</p>
                   </motion.div>
                 )}
               </AnimatePresence>

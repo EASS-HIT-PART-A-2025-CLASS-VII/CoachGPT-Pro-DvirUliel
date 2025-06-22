@@ -8,7 +8,7 @@
   
   // Difficulty configurations
   export const DIFFICULTY_CONFIG = {
-    beginner: { sets: 3, reps: 12 },
-    intermediate: { sets: 3, reps: 10 },
-    advanced: { sets: 4, reps: 8 }
+    beginner: { sets: 3, reps: 10 },
+    intermediate: { sets: 3, reps: 8 },
+    advanced: { sets: 3, reps: 6 }
   };

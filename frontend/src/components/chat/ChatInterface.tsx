@@ -114,7 +114,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </AnimatePresence>
 
       {/* Chat Input */}
-      <div className="border-t border-gray-200 bg-white px-4 py-4">
+      <div className="border border-gray-200 bg-white px-4 py-4">
         <ChatInput
           onSendMessage={onSendMessage}
           disabled={disabled || isLoading}

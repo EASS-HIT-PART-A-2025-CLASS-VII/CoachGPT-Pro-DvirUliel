@@ -1,0 +1,49 @@
+# Frontend Dockerfile for React with react-scripts
+FROM node:18-alpine
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files first for better layer caching
+COPY package.json package-lock.json* ./
+
+# Install dependencies
+RUN npm ci --silent
+
+# Copy source code
+COPY . .
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3001
+# Frontend runs in browser, needs localhost URLs, not Docker service names
+ENV REACT_APP_BACKEND_URL=http://localhost:5002
+ENV REACT_APP_LLM_URL=http://localhost:5003
+ENV TSC_COMPILE_ON_ERROR=true
+ENV ESLINT_NO_DEV_ERRORS=true
+ENV GENERATE_SOURCEMAP=false
+ENV FAST_REFRESH=true
+ENV SKIP_PREFLIGHT_CHECK=true
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S reactuser -u 1001 -G nodejs
+
+# Change ownership of the app directory
+RUN chown -R reactuser:nodejs /app
+
+# Switch to non-root user
+USER reactuser
+
+# Expose port 3001
+EXPOSE 3001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:3001 || exit 1
+
+# Start the React development server
+CMD ["npm", "start"]
