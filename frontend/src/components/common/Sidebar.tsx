@@ -67,8 +67,12 @@ const Sidebar: React.FC = () => {
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center">
               {/* Logo */}
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                <span className="text-white text-lg font-bold">🏋️</span>
+              <div className="w-12 h-12 flex-shrink-0">
+                <img 
+                  src="/coachgpt_pro_logo.PNG" 
+                  alt="CoachGPT Pro"
+                  className="w-full h-full object-contain drop-shadow-sm"
+                />
               </div>
               
               {/* Brand Text */}

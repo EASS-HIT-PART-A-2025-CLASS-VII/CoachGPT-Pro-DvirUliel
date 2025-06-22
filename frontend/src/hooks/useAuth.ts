@@ -128,7 +128,7 @@ export const useAuth = (): UseAuthReturn => {
       setTimeout(() => {
         console.log('🔍 useAuth - Delayed navigation to /plan');
         // Try window.location instead of navigate
-        window.location.href = '/plan';
+        window.location.href = '/home';
       }, 100);
       
     } catch (error: any) {
@@ -149,7 +149,7 @@ export const useAuth = (): UseAuthReturn => {
       
       setUser(response.user);
       toast.success('Registration successful! Welcome to CoachGPT Pro!');
-      navigate('/plan');
+      navigate('/home');
     } catch (error: any) {
       console.error('❌ useAuth - Registration error:', error);
       toast.error(error.message || 'Registration failed');

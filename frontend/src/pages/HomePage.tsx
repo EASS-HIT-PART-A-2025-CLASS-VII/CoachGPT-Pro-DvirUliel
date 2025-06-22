@@ -147,10 +147,10 @@ const HomePage: React.FC = () => {
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.8, ease: "easeOut" }}
-              className="mx-auto w-32 h-32 mb-6"
+              className="mx-auto w-56 h-56 sm:w-64 sm:h-64 lg:w-72 lg:h-72 mb-6"
             >
               <img 
-                src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAwIiBoZWlnaHQ9IjYwMCIgdmlld0JveD0iMCAwIDYwMCA2MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxjaXJjbGUgY3g9IjMwMCIgY3k9IjMwMCIgcj0iMjgwIiBzdHJva2U9IiMxZTQwYWYiIHN0cm9rZS13aWR0aD0iMTAiIGZpbGw9Im5vbmUiLz4KPGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTUwLDE0MClzY2FsZSgwLjcpIj4KPHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMyMCIgdmlld0JveD0iMCAwIDMwMCAzMjAiPgo8IS0tIEJ1bGwgSGVhZCAtLT4KPHBhdGggZD0iTTE1MCA0MEM3MCA0MCAyMCA5MCAyMCAxNDBTNzAgMjQwIDE1MCAyNDBTMjgwIDI0MCAyODAgMTQwUzIzMCA0MCAxNTAgNDBaIiBmaWxsPSIjMWU0MGFmIi8+CjwhLS0gSG9ybnMgLS0+CjxwYXRoIGQ9Ik0xMTAgODBDMTA1IDYwIDk1IDQ1IDg1IDQwQzgwIDM1IDcwIDM1IDY1IDQ1QzYwIDU1IDY1IDcwIDc1IDgwWiIgZmlsbD0iI2Y5NzMxNiIvPgo8cGF0aCBkPSJNMTkwIDgwQzE5NSA2MCAyMDUgNDUgMjE1IDQwQzIyMCAzNSAyMzAgMzUgMjM1IDQ1QzI0MCA1NSAyMzUgNzAgMjI1IDgwWiIgZmlsbD0iI2Y5NzMxNiIvPgo8IS0tIEV5ZXMgLS0+CjxjaXJjbGUgY3g9IjEyMCIgY3k9IjEyMCIgcj0iOCIgZmlsbD0iI2Y5NzMxNiIvPgo8Y2lyY2xlIGN4PSIxODAiIGN5PSIxMjAiIHI9IjgiIGZpbGw9IiNmOTczMTYiLz4KPHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjI0MCIgdmlld0JveD0iMCAwIDMwMCAyNDAiPgo8IS0tIE11c2N1bGFyIEJvZHkgLS0+CjxyZWN0IHg9IjEwMCIgeT0iMjIwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjE0MCIgcng9IjIwIiBmaWxsPSIjMWU0MGFmIi8+CjwhLS0gUGVjdG9yYWxzIC0tPgo8ZWxsaXBzZSBjeD0iODAiIGN5PSIyNjAiIHJ4PSIzNSIgcnk9IjI1IiBmaWxsPSIjMWU0MGFmIi8+CjxlbGxpcHNlIGN4PSIyMjAiIGN5PSIyNjAiIHJ4PSIzNSIgcnk9IjI1IiBmaWxsPSIjMWU0MGFmIi8+CjwhLS0gQWJzIC0tPgo8cmVjdCB4PSIxMjAiIHk9IjI4MCIgd2lkdGg9IjE1IiBoZWlnaHQ9IjIwIiByeD0iMyIgZmlsbD0iI2Y5NzMxNiIvPgo8cmVjdCB4PSIxNDAiIHk9IjI4MCIgd2lkdGg9IjE1IiBoZWlnaHQ9IjIwIiByeD0iMyIgZmlsbD0iI2Y5NzMxNiIvPgo8cmVjdCB4PSIxNjAiIHk9IjI4MCIgd2lkdGg9IjE1IiBoZWlnaHQ9IjIwIiByeD0iMyIgZmlsbD0iI2Y5NzMxNiIvPgo8IS0tIEFybXMgLS0+CjxjaXJjbGUgY3g9IjYwIiBjeT0iMjgwIiByPSIyNSIgZmlsbD0iIzFlNDBhZiIvPgo8Y2lyY2xlIGN4PSI2MCIgY3k9IjMyMCIgcj0iMjAiIGZpbGw9IiMxZTQwYWYiLz4KPGNpcmNsZSBjeD0iMjQwIiBjeT0iMjgwIiByPSIyNSIgZmlsbD0iIzFlNDBhZiIvPgo8Y2lyY2xlIGN4PSIyNDAiIGN5PSIzMjAiIHI9IjIwIiBmaWxsPSIjMWU0MGFmIi8+CjwvZz4KPC9zdmc+" 
+                src="/coachgpt_pro_logo.PNG" 
                 alt="CoachGPT Pro"
                 className="w-full h-full object-contain drop-shadow-2xl"
               />

@@ -9,14 +9,18 @@ const TypingIndicator: React.FC = () => {
       exit={{ opacity: 0, y: -20 }}
       className="flex justify-start"
     >
-      <div className="flex items-start space-x-3 max-w-[80%]">
-        {/* Avatar */}
-        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-brand-blue to-brand-orange text-white flex items-center justify-center flex-shrink-0">
-          <span className="text-sm font-bold">🤖</span>
+      <div className="flex items-start max-w-[80%]">
+        {/* Avatar - Same size as ChatMessage */}
+        <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0">
+          <img 
+            src="/coachgpt_pro_logo.PNG" 
+            alt="CoachGPT Pro"
+            className="w-12 h-12 object-contain"
+          />
         </div>
 
-        {/* Typing Bubble */}
-        <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
+        {/* Typing Bubble with spacing */}
+        <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm ml-3">
           <div className="flex items-center space-x-1">
             <span className="text-sm text-gray-600 mr-2">AI Coach is typing</span>
             <div className="flex space-x-1">

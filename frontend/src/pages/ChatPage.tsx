@@ -164,8 +164,12 @@ const ChatPage: React.FC = () => {
       <div className="bg-white border-b border-gray-200 px-4 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-brand-blue to-brand-orange rounded-full flex items-center justify-center">
-              <span className="text-white text-lg">🤖</span>
+            <div className="w-16 h-16 flex-shrink-0">
+              <img 
+                src="/coachgpt_pro_logo.PNG" 
+                alt="CoachGPT Pro AI Coach"
+                className="w-full h-full object-contain drop-shadow-sm"
+              />
             </div>
             <div>
               <h1 className="text-lg font-semibold text-gray-900">AI Fitness Coach</h1>

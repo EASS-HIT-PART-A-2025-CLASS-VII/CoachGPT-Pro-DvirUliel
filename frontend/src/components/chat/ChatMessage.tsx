@@ -19,31 +19,35 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({ message }) => {
       <div
         className={`flex max-w-[80%] ${
           isUser ? 'flex-row-reverse' : 'flex-row'
-        } items-start space-x-3`}
+        } items-start`}
       >
         {/* Avatar */}
         <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+          className={`w-12 h-12 flex items-center justify-center flex-shrink-0 ${
             isUser
-              ? 'bg-brand-blue text-white'
-              : 'bg-gradient-to-r from-brand-blue to-brand-orange text-white'
+              ? 'bg-brand-blue text-white rounded-full'
+              : ''
           }`}
         >
           {isUser ? (
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
             </svg>
           ) : (
-            <span className="text-sm font-bold">🤖</span>
+            <img
+              src="/coachgpt_pro_logo.PNG"
+              alt="CoachGPT Pro"
+              className="w-12 h-12 object-contain"
+            />
           )}
         </div>
 
-        {/* Message Bubble */}
+        {/* Message Bubble with spacing */}
         <div
           className={`rounded-2xl px-4 py-3 max-w-full ${
             isUser
-              ? 'bg-brand-blue text-white rounded-br-md'
-              : 'bg-white border border-gray-200 text-gray-900 rounded-bl-md shadow-sm'
+              ? 'bg-brand-blue text-white rounded-br-md mr-3'
+              : 'bg-white border border-gray-200 text-gray-900 rounded-bl-md shadow-sm ml-3'
           }`}
         >
           {/* Message Content */}
