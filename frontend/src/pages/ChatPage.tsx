@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
 import chatService from '../services/chatService';
@@ -11,7 +10,6 @@ const ChatPage: React.FC = () => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
   const [llmHealth, setLlmHealth] = useState<'checking' | 'healthy' | 'unhealthy'>('checking');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -69,52 +67,50 @@ const ChatPage: React.FC = () => {
 
       if (validationErrors.length > 0) {
         toast.error(validationErrors[0]);
+        setIsLoading(false);
         return;
       }
 
-      // Create placeholder for assistant response
-      const assistantMessage: ChatMessage = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: '',
-        timestamp: new Date(),
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
-      setIsStreaming(true);
-
-      // Use streaming response
-      const stream = await chatService.sendStreamMessage({
+      // Use regular chat endpoint (not streaming)
+      const response = await chatService.sendMessage({
         userId: user.id,
         message: messageContent,
       });
 
-      const streamGenerator = await chatService.parseStreamResponse(stream);
-      let fullResponse = '';
-
-      for await (const chunk of streamGenerator) {
-        fullResponse += chunk;
-        setMessages(prev => 
-          prev.map(msg => 
-            msg.id === assistantMessage.id 
-              ? { ...msg, content: fullResponse }
-              : msg
-          )
-        );
+      // Handle different response structures
+      let responseContent = '';
+      if (response?.data?.response) {
+        responseContent = response.data.response;
+      } else if (response?.response) {
+        responseContent = response.response;
+      } else if (typeof response === 'string') {
+        responseContent = response;
+      } else {
+        responseContent = 'Sorry, I received an invalid response. Please try again.';
       }
 
+      // Create assistant message with the response
+      const assistantMessage: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: responseContent,
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+
     } catch (error: any) {
+      console.error('Chat error:', error);
       toast.error(error.message);
-      // Remove the empty assistant message on error
-      setMessages(prev => prev.filter(msg => msg.content !== ''));
     } finally {
       setIsLoading(false);
-      setIsStreaming(false);
     }
   };
 
   const clearChat = () => {
+    setIsLoading(false);
     setMessages([]);
+    
     // Re-add welcome message
     setTimeout(() => {
       const welcomeMessage: ChatMessage = {
@@ -190,7 +186,7 @@ const ChatPage: React.FC = () => {
             <button
               onClick={clearChat}
               className="btn-secondary text-sm"
-              disabled={isLoading || isStreaming}
+              disabled={isLoading}
             >
               Clear Chat
             </button>
@@ -204,7 +200,6 @@ const ChatPage: React.FC = () => {
           messages={messages}
           onSendMessage={handleSendMessage}
           isLoading={isLoading}
-          isStreaming={isStreaming}
           disabled={llmHealth !== 'healthy'}
         />
       </div>

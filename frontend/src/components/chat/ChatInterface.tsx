@@ -9,7 +9,6 @@ interface ChatInterfaceProps {
   messages: ChatMessage[];
   onSendMessage: (message: string) => void;
   isLoading: boolean;
-  isStreaming: boolean;
   disabled?: boolean;
 }
 
@@ -17,7 +16,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   messages,
   onSendMessage,
   isLoading,
-  isStreaming,
   disabled = false,
 }) => {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -91,7 +89,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             ))}
 
             {/* Typing Indicator */}
-            {(isLoading || isStreaming) && (
+            {isLoading && (
               <TypingIndicator />
             )}
           </>
@@ -120,11 +118,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         <ChatInput
           onSendMessage={onSendMessage}
           disabled={disabled || isLoading}
-          placeholder={disabled ? "Chat is currently disabled" : "Ask your AI fitness coach anything..."}
+          placeholder={
+            disabled 
+              ? "Chat is currently disabled" 
+              : isLoading 
+                ? "AI is thinking..." 
+                : "Ask your AI fitness coach anything..."
+          }
         />
         
         {/* Helpful Suggestions */}
-        {messages.length <= 1 && (
+        {messages.length <= 1 && !isLoading && (
           <div className="mt-3 flex flex-wrap gap-2">
             {[
               "What's the best workout for beginners?",

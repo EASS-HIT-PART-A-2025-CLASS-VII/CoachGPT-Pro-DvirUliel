@@ -4,19 +4,15 @@ import { ChatRequest, ChatResponse, AvailableModelsResponse } from '../types/cha
 class ChatService {
   async sendMessage(request: ChatRequest): Promise<ChatResponse> {
     try {
+      console.log('💬 Sending message to /chat endpoint:', request);
       const response = await apiUtils.llm.post<ChatResponse>('/chat', request);
+      console.log('✅ Received response structure:', response);
+      console.log('✅ Response type:', typeof response);
+      console.log('✅ Response keys:', response ? Object.keys(response) : 'null');
       return response;
     } catch (error: any) {
+      console.error('❌ Chat request failed:', error);
       throw new Error(error.message || 'Failed to send message');
-    }
-  }
-
-  async sendStreamMessage(request: ChatRequest): Promise<ReadableStream> {
-    try {
-      const stream = await apiUtils.llm.stream('/chat/stream', request);
-      return stream;
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to send streaming message');
     }
   }
 
@@ -55,42 +51,6 @@ class ChatService {
     }
 
     return errors;
-  }
-
-  // Parse streaming response
-  async parseStreamResponse(stream: ReadableStream): Promise<AsyncGenerator<string, void, unknown>> {
-    const reader = stream.getReader();
-    const decoder = new TextDecoder();
-
-    return (async function* () {
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          
-          if (done) break;
-          
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n');
-          
-          for (const line of lines) {
-            if (line.trim()) {
-              try {
-                const parsed = JSON.parse(line);
-                if (parsed.response) {
-                  yield parsed.response;
-                }
-                if (parsed.done) return;
-              } catch (e) {
-                // If not JSON, treat as plain text
-                yield line;
-              }
-            }
-          }
-        }
-      } finally {
-        reader.releaseLock();
-      }
-    })();
   }
 }
 

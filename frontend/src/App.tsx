@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from './hooks/useAuth';
 // Pages
+import LoginRegisterPage from './pages/LoginRegisterPage';
 import HomePage from './pages/HomePage';
 import WorkoutPlanPage from './pages/WorkoutPlanPage';
 import ChatPage from './pages/ChatPage';
@@ -90,18 +91,22 @@ function App() {
             {/* Public Routes */}
             <Route
               path="/"
-              element={user ? <Navigate to="/plan" replace /> : <HomePage />}
+              element={user ? <Navigate to="/home" replace /> : <LoginRegisterPage />}
             />
             <Route
               path="/login"
-              element={user ? <Navigate to="/plan" replace /> : <AuthPage mode="login" />}
+              element={user ? <Navigate to="/home" replace /> : <AuthPage mode="login" />}
             />
             <Route
               path="/register"
-              element={user ? <Navigate to="/plan" replace /> : <AuthPage mode="register" />}
+              element={user ? <Navigate to="/home" replace /> : <AuthPage mode="register" />}
             />
             
             {/* Protected Routes */}
+            <Route
+              path="/home"
+              element={user ? <HomePage /> : <Navigate to="/" replace />}
+            />
             <Route
               path="/plan"
               element={user ? <WorkoutPlanPage /> : <Navigate to="/" replace />}

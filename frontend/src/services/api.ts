@@ -162,15 +162,6 @@ export const apiUtils = {
       const response = await llmApi.post<T>(url, data, config);
       return response.data;
     },
-
-    // Stream request for chat
-    async stream(url: string, data?: any, config?: AxiosRequestConfig): Promise<ReadableStream> {
-      const response = await llmApi.post(url, data, {
-        ...config,
-        responseType: 'stream',
-      });
-      return response.data;
-    },
   },
 };
 

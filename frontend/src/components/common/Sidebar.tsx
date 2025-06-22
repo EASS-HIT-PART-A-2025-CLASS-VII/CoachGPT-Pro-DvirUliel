@@ -18,6 +18,7 @@ const Sidebar: React.FC = () => {
   const { user, logout } = useAuth();
 
   const navItems: NavItem[] = [
+    { id: 'home', path: '/home', icon: '🏠', label: 'Home', color: 'text-indigo-500' },
     { id: 'plan', path: '/plan', icon: '🏋️', label: 'Workout Plan', color: 'text-blue-500' },
     { id: 'chat', path: '/chat', icon: '🤖', label: 'AI Coach', color: 'text-purple-500' },
     { id: 'exercises', path: '/exercises', icon: '📚', label: 'Exercise Library', color: 'text-green-500' },

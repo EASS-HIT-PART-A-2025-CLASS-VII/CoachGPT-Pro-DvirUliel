@@ -2,7 +2,7 @@
 export const API_CONFIG = {
     BACKEND_URL: process.env.REACT_APP_BACKEND_URL || 'http://localhost:5002',
     LLM_URL: process.env.REACT_APP_LLM_URL || 'http://localhost:5003',
-    TIMEOUT: 30000,
+    TIMEOUT: 70000,
   };
   
   // Storage Keys
