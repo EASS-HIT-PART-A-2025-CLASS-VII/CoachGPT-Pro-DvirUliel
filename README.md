@@ -57,7 +57,7 @@ Watch the complete platform walkthrough and see all features in action:
 
 **Microservices:**
 - **Backend API Service**: User management, workout plans, exercise database, health monitoring
-- **LLM Service**: AI chat interface with streaming responses and Ollama integration
+- **LLM Service**: AI chat interface with chat responses and Ollama integration
 - **Frontend Service**: React TypeScript application with interactive UI and real-time features
 - **Supporting Services**: PostgreSQL database, Ollama AI engine
 
@@ -109,7 +109,7 @@ Services       Relationships
 **Core Tables:**
 - **Users**: Authentication and profile management (UUID-based)
 - **Exercises**: Comprehensive exercise database (105+ exercises across 7 muscle groups)
-- **Workout Plans**: Generated workout programs with JSONB plan data
+- **Workout Plans**: Generated workout programs with smart logic
 - **Plan Actions**: Activity tracking for plan modifications (add/swap/remove)
 
 ### **Exercise Database Structure**
@@ -136,7 +136,7 @@ Week 4: +2 reps, +1 set
 
 **Plan Structure:**
 - **Program Duration**: 4-week cycles with progressive overload
-- **Workout Days**: 3-6 days per week based on user preference
+- **Workout Days**: choose days per week based on user preference
 - **Exercise Selection**: 5 exercises per day
   - 3 Primary muscle group exercises
   - 2 Secondary muscle group exercises
@@ -168,7 +168,7 @@ Frontend (React + TypeScript) ← → Backend API Service ← → PostgreSQL
     Interactive UI                
          ↓
          ← → LLM Service ← → Ollama AI
-             Streaming Chat
+             Chat
 ```
 
 ### **Frontend Technology Stack**
@@ -176,7 +176,7 @@ Frontend (React + TypeScript) ← → Backend API Service ← → PostgreSQL
 - **Styling**: Tailwind CSS for responsive, utility-first design
 - **UI Components**: Custom component library with consistent design system
 - **State Management**: React hooks and context for real-time state synchronization
-- **Real-time Features**: Server-sent events for streaming AI responses
+- **Real-time Features**: Server-sent events for chat AI responses
 - **Responsive Design**: Mobile-first approach with desktop optimization
 
 ### **Application Pages & Features**
@@ -196,7 +196,7 @@ Frontend (React + TypeScript) ← → Backend API Service ← → PostgreSQL
 - **History Tracking**: Complete audit trail of all plan modifications through modal interface
 
 #### **🤖 AI Fitness Coach**
-- **Real-time Chat**: Streaming AI responses powered by llama3.2:3b model
+- **Real-time Chat**: Chat AI responses powered by llama3.2:3b model
 - **Conversation Interface**: Modern chat UI with message history and typing indicators
 - **Quick Suggestions**: Pre-built fitness questions for instant advice
 - **Online Status**: Live connection indicator to LLM service
@@ -225,7 +225,6 @@ Frontend (React + TypeScript) ← → Backend API Service ← → PostgreSQL
 
 ### **State Management & Data Flow**
 - **API Integration**: RESTful communication with Backend API service
-- **WebSocket Connections**: Real-time streaming for AI chat functionality
 - **Local State**: Efficient React hooks for component-level state management
 - **Global Context**: User authentication and session management
 - **Error Boundaries**: Graceful error handling and recovery mechanisms
@@ -271,7 +270,10 @@ cd llm && npm test
 cd frontend && npm test
 
 # Docker integration tests
-./test-docker.sh
+# Backend + PostgreSQL
+cd backend && ./test-docker.sh
+# LLM Service + Ollama  
+cd llm && ./test-docker.sh
 
 # Coverage reports
 npm run test:coverage
@@ -326,12 +328,11 @@ docker-compose up -d
 docker-compose ps
 
 # View logs
-docker-compose logs -f llm-service
 docker-compose logs -f backend
+docker-compose logs -f postgres
+docker-compose logs -f llm-service
 docker-compose logs -f ollama
-
-# Run health checks
-./test-docker.sh
+docker-compose logs -f frontend
 
 # Stop all services
 docker-compose down
@@ -428,8 +429,8 @@ GENERATE_SOURCEMAP=false
 
 ```bash
 # 1. Clone and navigate to project
-git clone <repository>
-cd CoachGPT-Pro
+git clone https://github.com/EASS-HIT-PART-A-2025-CLASS-VII/CoachGPT-Pro-DvirUliel.git
+cd CoachGPT-Pro-DvirUliel
 
 # 2. Create environment files for each service
 # And edit the configuration passwords
@@ -513,7 +514,7 @@ npm start
 
 ### **LLM Service Architecture**
 - **Singleton Pattern**: Single LLMService instance with proper initialization
-- **Async Streaming**: Real-time AI responses using Node.js streams
+- **Async Streaming**: Real-time AI responses using Ollama service 
 - **Health Monitoring**: Multi-level health checks (service, Ollama, model)
 - **Error Handling**: Comprehensive error middleware with proper HTTP codes
 - **Request Validation**: Joi schema validation for chat requests
@@ -542,6 +543,6 @@ npm start
 - ✅ Ollama AI engine operational with llama3.2:3b
 - ✅ Security best practices implemented
 - ✅ Comprehensive health monitoring
-- ✅ Real-time streaming AI responses
+- ✅ Real-time chat AI responses
 
 **CoachGPT Pro platform is ready for production deployment! 🚀**
