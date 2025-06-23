@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { LLMService } from '../services/llm.service';
 import { ChatMessage } from '../types';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 export class ChatController {
   private llmService = LLMService.getInstance(); // Singleton instance
@@ -127,7 +130,7 @@ export class ChatController {
         success: true,
         data: {
           availableModels: models,
-          currentModel: process.env.OLLAMA_MODEL || 'llama3.2:3b'
+          currentModel: process.env.OLLAMA_MODEL
         }
       });
     } catch (error) {

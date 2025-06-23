@@ -18,7 +18,7 @@ const PORT = parseInt(process.env.PORT || '5003', 10);
 
 // Middleware
 app.use(helmet());
-app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:3001', credentials: true }));
+app.use(cors({ origin: process.env.CORS_ORIGIN, credentials: true }));
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -71,8 +71,8 @@ async function startServer() {
     server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`✅ Server running on port ${PORT}`);
       console.log(`📍 Health check: http://localhost:${PORT}/health`);
-      console.log(`🤖 Model: ${process.env.OLLAMA_MODEL || 'llama3.2:3b'}`);
-      console.log(`🔗 Ollama URL: ${process.env.OLLAMA_URL || 'http://localhost:11434'}`);
+      console.log(`🤖 Model: ${process.env.OLLAMA_MODEL}`);
+      console.log(`🔗 Ollama URL: ${process.env.OLLAMA_URL}`);
     });
 
   } catch (error: any) {

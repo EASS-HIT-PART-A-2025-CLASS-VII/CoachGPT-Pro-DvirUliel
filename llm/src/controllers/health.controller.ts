@@ -1,5 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { LLMService } from '../services/llm.service';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 export class HealthController {
   private llmService = LLMService.getInstance(); // Singleton instance
@@ -42,18 +45,18 @@ export class HealthController {
           services: {
             ollama: {
               status: ollamaHealthy,
-              url: process.env.OLLAMA_URL || 'http://localhost:11434',
-              currentModel: process.env.OLLAMA_MODEL || 'llama3.2:3b',
+              url: process.env.OLLAMA_URL,
+              currentModel: process.env.OLLAMA_MODEL,
               availableModels: models
             },
             llmService: {
               status: this.llmService.isReady(),
-              timeout: process.env.LLM_TIMEOUT || '70000ms',
-              maxTokens: process.env.DEFAULT_MAX_TOKENS || '200'
+              timeout: process.env.LLM_TIMEOUT,
+              maxTokens: process.env.DEFAULT_MAX_TOKENS
             }
           },
           system: {
-            environment: process.env.NODE_ENV || 'development',
+            environment: process.env.NODE_ENV,
             uptime: process.uptime(),
             memory: process.memoryUsage(),
             version: '1.0.0',
@@ -171,10 +174,10 @@ export class HealthController {
             nodeVersion: process.version
           },
           configuration: {
-            model: process.env.OLLAMA_MODEL || 'llama3.2:3b',
-            timeout: process.env.LLM_TIMEOUT || '70000',
-            maxTokens: process.env.DEFAULT_MAX_TOKENS || '200',
-            temperature: process.env.DEFAULT_TEMPERATURE || '0.7'
+            model: process.env.OLLAMA_MODEL,
+            timeout: process.env.LLM_TIMEOUT,
+            maxTokens: process.env.DEFAULT_MAX_TOKENS,
+            temperature: process.env.DEFAULT_TEMPERATURE
           }
         }
       });

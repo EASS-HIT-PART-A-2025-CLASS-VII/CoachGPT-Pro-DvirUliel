@@ -16,11 +16,11 @@ import healthRoutes from './routes/health.route';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5002;
+const PORT = process.env.PORT;
 
 // Middleware
 app.use(helmet());
-app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:3001', credentials: true }));
+app.use(cors({ origin: process.env.CORS_ORIGIN, credentials: true }));
 app.use(compression());
 app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
@@ -60,7 +60,7 @@ const startServer = async () => {
   
   app.listen(PORT, () => {
     console.log(`🚀 CoachGPT Pro Backend running on port ${PORT}`);
-    console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`📍 Environment: ${process.env.NODE_ENV}`);
     console.log(dbConnected ? '✅ All systems ready!' : '⚠️ Database connection failed');
   });
 };
