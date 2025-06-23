@@ -1,6 +1,15 @@
-# 🏋️‍♂️ CoachGPT Pro – Full Stack AI Fitness Platform
+# 🏋️‍♂️ CoachGPT Pro – Full Stack Fitness Platform With Smart AI Coaching
 
-AI-powered workout planning system with **microservices architecture**, real-time AI chat, and comprehensive Docker orchestration.
+Professional workout planning system with microservices architecture, intelligent coaching assistant, and comprehensive Docker orchestration.
+
+---
+
+## 📺 Demo Video
+Watch the complete platform walkthrough and see all features in action:
+
+[![CoachGPT Pro Demo](https://img.youtube.com/vi/QXBf0hHZCNw/maxresdefault.jpg)](https://www.youtube.com/watch?v=QXBf0hHZCNw)
+
+**[► View Full Demo on YouTube](https://www.youtube.com/watch?v=QXBf0hHZCNw)**
 
 ---
 
