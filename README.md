@@ -256,7 +256,10 @@ cd llm && npm test
 cd frontend && npm test
 
 # Docker integration tests
-./test-docker.sh
+# Backend + PostgreSQL
+cd backend && ./test-docker.sh
+# LLM Service + Ollama  
+cd llm && ./test-docker.sh
 
 # Coverage reports
 npm run test:coverage
@@ -367,7 +370,10 @@ docker-compose up -d
 docker-compose logs -f ollama
 
 # 4. Verify all services are healthy
-./test-docker.sh
+# Backend + PostgreSQL
+cd backend && ./test-docker.sh
+# LLM Service + Ollama  
+cd llm && ./test-docker.sh
 
 # 5. Access the application
 # Frontend: http://localhost:3001
