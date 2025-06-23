@@ -5,12 +5,8 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: coachgpt_db
-    environment:
-      POSTGRES_DB: coachgpt
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_HOST_AUTH_METHOD: trust 
-      PGUSER: postgres
+    env_file:
+      - ./backend/.env
     ports:
       - "5433:5432"
     volumes:
@@ -25,25 +21,20 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Backend API Service 
+  # Backend API Service
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: coachgpt_backend
+    env_file:
+      - ./backend/.env
     environment:
-      - NODE_ENV=production
-      - PORT=5002
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_NAME=coachgpt
-      - DB_USER=postgres
-      - DB_PASSWORD=password
-      - JWT_SECRET=coachgpt_secret_4231
     ports:
       - "5002:5002"
     depends_on:
-      # Backend only depends on its database
       postgres:
         condition: service_healthy
     networks:
@@ -55,7 +46,7 @@ services:
       retries: 3
     restart: unless-stopped
 
-  # Ollama LLM Engine 
+  # Ollama LLM Engine
   ollama:
     image: ollama/ollama:latest
     container_name: coachgpt_ollama
@@ -68,7 +59,7 @@ services:
       - coachgpt_network
     environment:
       - OLLAMA_HOST=0.0.0.0:11434
-      - OLLAMA_ORIGINS=*
+      - OLLAMA_ORIGINS=http://localhost:3001
     healthcheck:
       test: ["CMD", "/bin/ollama", "list"]
       interval: 30s
@@ -76,31 +67,19 @@ services:
       retries: 5
       start_period: 60s
 
-  # LLM Microservice 
+  # LLM Microservice
   llm-service:
     build:
       context: ./llm
       dockerfile: Dockerfile
     container_name: coachgpt_llm_service
+    env_file:
+      - ./llm/.env
     environment:
-      - NODE_ENV=production
-      - PORT=5003
       - OLLAMA_URL=http://ollama:11434
-      - OLLAMA_MODEL=llama3.2:3b
-      
-      # LLM-specific settings only
-      - LOG_LEVEL=info
-      - RATE_LIMIT_WINDOW_MS=60000
-      - RATE_LIMIT_MAX_REQUESTS=10
-      - DEFAULT_TEMPERATURE=0.7
-      - DEFAULT_TOP_P=0.9
-      - DEFAULT_MAX_TOKENS=200
-      - LLM_TIMEOUT=70000              # 70 seconds
-            
     ports:
       - "5003:5003"
     depends_on:
-      # LLM service only depends on Ollama
       ollama:
         condition: service_healthy
     networks:
@@ -113,27 +92,17 @@ services:
       start_period: 180s
     restart: unless-stopped
 
-  # Frontend React Application 
+  # Frontend React Application
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: coachgpt_frontend
-    environment:
-      - NODE_ENV=production
-      - PORT=3001
-      - REACT_APP_BACKEND_URL=http://localhost:5002
-      - REACT_APP_LLM_URL=http://localhost:5003
-      - TSC_COMPILE_ON_ERROR=true
-      - ESLINT_NO_DEV_ERRORS=true
-      - DISABLE_ESLINT_PLUGIN=true
-      - GENERATE_SOURCEMAP=false
-      - FAST_REFRESH=true
-      - SKIP_PREFLIGHT_CHECK=true
+    env_file:
+      - ./frontend/.env
     ports:
       - "3001:3001"
     depends_on:
-      # Frontend depends on backend and LLM service being healthy
       backend:
         condition: service_healthy
       llm-service:

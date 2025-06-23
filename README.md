@@ -21,7 +21,7 @@ AI-powered workout planning system with **microservices architecture**, real-tim
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                            CoachGPT Pro Platform                            │
+│                            CoachGPT Pro Platform                           │
 └─────────────────────────────────────────────────────────────────────────────┘
 
                            ┌─────────────────┐
@@ -50,9 +50,38 @@ AI-powered workout planning system with **microservices architecture**, real-tim
 
 **Microservices:**
 - **Backend API Service**: User management, workout plans, exercise database, health monitoring
-- **LLM Service**: AI chat interface with real time responses and Ollama integration
+- **LLM Service**: AI chat interface with streaming responses and Ollama integration
 - **Frontend Service**: React TypeScript application with interactive UI and real-time features
 - **Supporting Services**: PostgreSQL database, Ollama AI engine
+
+---
+
+## 🤖 LLM Service & Ollama Integration
+
+### **How It Works**
+The LLM service acts as an intelligent middleware between your application and the Ollama AI engine:
+
+```
+Frontend → LLM Service → Ollama Engine → llama3.2:3b Model
+    ↑          ↓             ↓              ↓
+   User    Rate Limit    Model Load     AI Response
+  Input    Validation   & Inference    Generation
+```
+
+### **Key Features**
+- **Singleton Design Pattern**: Single LLMService instance across the application
+- **Model**: `llama3.2:3b` - Optimized for fitness coaching conversations
+- **Streaming Responses**: Real-time AI chat with server-sent events
+- **Rate Limiting**: 10 requests per minute per user
+- **Health Monitoring**: Comprehensive health checks for both LLM service and Ollama
+- **Automatic Initialization**: Model warm-up and readiness validation
+
+### **Ollama Service**
+- **Container**: `ollama/ollama:latest`
+- **Model Storage**: Persistent volume for model data
+- **API**: RESTful interface for model management
+- **Health Checks**: Model availability validation
+- **Configuration**: Supports model pulling and switching
 
 ---
 
@@ -80,6 +109,7 @@ Services       Relationships
 - **7 Muscle Groups**: Chest, Back, Legs, Shoulders, Core, Biceps, Triceps
 - **3 Difficulty Levels**: Beginner, Intermediate, Advanced (15 exercises per muscle group)
 - **Equipment Types**: Bodyweight, Dumbbell, Barbell, Machine, Cable, Band
+- **Exercise Substitutions**: Smart alternative suggestions for equipment limitations
 
 ### **Workout Plan Generation Logic**
 **Progressive Overload System:**
@@ -99,7 +129,7 @@ Week 4: +2 reps, +1 set
 
 **Plan Structure:**
 - **Program Duration**: 4-week cycles with progressive overload
-- **Workout Days**: 1-7 days per week (4 recommended) based on user preference
+- **Workout Days**: 3-6 days per week based on user preference
 - **Exercise Selection**: 5 exercises per day
   - 3 Primary muscle group exercises
   - 2 Secondary muscle group exercises
@@ -119,35 +149,6 @@ Real-time monitoring of user plan modifications:
 
 ---
 
-## 🤖 LLM Service & Ollama Integration
-
-### **How It Works**
-The LLM service acts as an intelligent middleware between your application and the Ollama AI engine:
-
-```
-Frontend → LLM Service → Ollama Engine → llama3.2:3b Model
-    ↑          ↓             ↓              ↓
-   User    Rate Limit    Model Load     AI Response
-  Input    Validation   & Inference    Generation
-```
-
-### **Key Features**
-- **Singleton Design Pattern**: Single LLMService instance across the application
-- **Model**: `llama3.2:3b` - Optimized for fitness coaching conversations
-- **Real Time Responses**: Real-time AI chat with server-sent events
-- **Rate Limiting**: 10 requests per minute per user
-- **Health Monitoring**: Comprehensive health checks for both LLM service and Ollama
-- **Automatic Initialization**: Model warm-up and readiness validation
-
-### **Ollama Service**
-- **Container**: `ollama/ollama:latest`
-- **Model Storage**: Persistent volume for model data
-- **API**: RESTful interface for model management
-- **Health Checks**: Model availability validation
-- **Configuration**: Supports model pulling and switching
-
----
-
 ## 🎯 Frontend Service & User Interface
 
 ### **How Frontend Integrates with Services**
@@ -160,7 +161,7 @@ Frontend (React + TypeScript) ← → Backend API Service ← → PostgreSQL
     Interactive UI                
          ↓
          ← → LLM Service ← → Ollama AI
-             Chat
+             Streaming Chat
 ```
 
 ### **Frontend Technology Stack**
@@ -168,7 +169,7 @@ Frontend (React + TypeScript) ← → Backend API Service ← → PostgreSQL
 - **Styling**: Tailwind CSS for responsive, utility-first design
 - **UI Components**: Custom component library with consistent design system
 - **State Management**: React hooks and context for real-time state synchronization
-- **Real-time Features**: Server-sent events for AI responses
+- **Real-time Features**: Server-sent events for streaming AI responses
 - **Responsive Design**: Mobile-first approach with desktop optimization
 
 ### **Application Pages & Features**
@@ -188,7 +189,7 @@ Frontend (React + TypeScript) ← → Backend API Service ← → PostgreSQL
 - **History Tracking**: Complete audit trail of all plan modifications through modal interface
 
 #### **🤖 AI Fitness Coach**
-- **Real-time Chat**: AI responses powered by llama3.2:3b model
+- **Real-time Chat**: Streaming AI responses powered by llama3.2:3b model
 - **Conversation Interface**: Modern chat UI with message history and typing indicators
 - **Quick Suggestions**: Pre-built fitness questions for instant advice
 - **Online Status**: Live connection indicator to LLM service
@@ -217,7 +218,7 @@ Frontend (React + TypeScript) ← → Backend API Service ← → PostgreSQL
 
 ### **State Management & Data Flow**
 - **API Integration**: RESTful communication with Backend API service
-- **WebSocket Connections**: Real-time response for AI chat functionality
+- **WebSocket Connections**: Real-time streaming for AI chat functionality
 - **Local State**: Efficient React hooks for component-level state management
 - **Global Context**: User authentication and session management
 - **Error Boundaries**: Graceful error handling and recovery mechanisms
@@ -244,8 +245,8 @@ All source code is organized in `/src` directories with dedicated `/tests` folde
 ## 🧪 Testing & Quality
 
 ✅ **All Tests Passing**
-- **Backend Tests**: 36 of 36 passing (Auth, Health, Exercise, Plan services)
-- **LLM Service Tests**: 18 of 18 passing (Chat functionality, health checks, streaming)
+- **Backend Tests**: 36 passing (Auth, Health, Exercise, Plan services)
+- **LLM Service Tests**: 18 passing (Chat functionality, health checks, streaming)
 - **Frontend Tests**: React components tested
 - **Docker Integration**: `test-docker.sh` validates all service connectivity
   - PostgreSQL connection validation
@@ -263,10 +264,7 @@ cd llm && npm test
 cd frontend && npm test
 
 # Docker integration tests
-# Backend + PostgreSQL
-cd backend && ./test-docker.sh
-# LLM Service + Ollama  
-cd llm && ./test-docker.sh
+./test-docker.sh
 
 # Coverage reports
 npm run test:coverage
@@ -311,31 +309,80 @@ npm run test:coverage
 
 ---
 
+## 🐳 Docker Quick Start
+
+```bash
+# Start all services (Backend + LLM + Frontend + Database + Ollama)
+docker-compose up -d
+
+# Check service status
+docker-compose ps
+
+# View logs
+docker-compose logs -f llm-service
+docker-compose logs -f backend
+docker-compose logs -f ollama
+
+# Run health checks
+./test-docker.sh
+
+# Stop all services
+docker-compose down
+```
+
+### **Service Dependencies**
+```
+Frontend → Backend API ← PostgreSQL
+    ↓
+LLM Service → Ollama Engine
+```
+
+---
+
 ## ⚙️ Configuration
+
+### **Environment Files Structure**
+Each service uses its own `.env` file for configuration:
+
+```
+/CoachGPT-Pro
+├── /backend/.env          # Backend + PostgreSQL config
+├── /llm/.env              # LLM service config  
+├── /frontend/.env         # Frontend config
+└── docker-compose.yml     # Orchestration
+```
 
 ### **Backend Service Environment**
 ```env
+# backend/.env
 NODE_ENV=production
 PORT=5002
 DB_HOST=postgres
-DB_NAME=coachgpt
-JWT_SECRET=your_secret_key
+DB_NAME=your_database_name
+DB_USER=your_db_user
+DB_PASSWORD=your_secure_password
+JWT_SECRET=your_jwt_secret_here
+CORS_ORIGIN=http://localhost:3001
+POSTGRES_HOST_AUTH_METHOD=md5
 ```
 
 ### **LLM Service Environment**
 ```env
-NODE_ENV=production
+# llm/.env
+NODE_ENV=development
 PORT=5003
-OLLAMA_URL=http://ollama:11434
+OLLAMA_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.2:3b
 DEFAULT_TEMPERATURE=0.7
-DEFAULT_MAX_TOKENS=200
+DEFAULT_MAX_TOKENS=500
 LLM_TIMEOUT=70000
-RATE_LIMIT_MAX_REQUESTS=10
+RATE_LIMIT_MAX_REQUESTS=20
+ALLOWED_ORIGINS=http://localhost:3001,http://localhost:5002
 ```
 
 ### **Frontend Service Environment**
 ```env
+# frontend/.env
 NODE_ENV=production
 PORT=3001
 REACT_APP_BACKEND_URL=http://localhost:5002
@@ -344,11 +391,18 @@ TSC_COMPILE_ON_ERROR=true
 GENERATE_SOURCEMAP=false
 ```
 
-### **Ollama Configuration**
+### **Docker Configuration**
 ```env
-OLLAMA_HOST=0.0.0.0:11434
-OLLAMA_ORIGINS=*
+# Docker automatically loads each service's .env file
+# No shared secrets in docker-compose.yml
+# All sensitive data isolated in service-specific .env files
 ```
+
+### **Security Notes**
+- 🔒 All `.env` files are git-ignored
+- 🛡️ No hardcoded secrets in docker-compose.yml
+- 🎯 Each service manages its own configuration
+- 📝 Use `.env.example` files for development setup
 
 ---
 
@@ -442,6 +496,6 @@ npm start
 - ✅ Ollama AI engine operational with llama3.2:3b
 - ✅ Security best practices implemented
 - ✅ Comprehensive health monitoring
-- ✅ Real-time AI responses
+- ✅ Real-time streaming AI responses
 
 **CoachGPT Pro platform is ready for production deployment! 🚀**
