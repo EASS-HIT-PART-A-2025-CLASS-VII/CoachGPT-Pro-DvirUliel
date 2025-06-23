@@ -21,7 +21,7 @@ AI-powered workout planning system with **microservices architecture**, real-tim
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                            CoachGPT Pro Platform                           │
+│                            CoachGPT Pro Platform                            │
 └─────────────────────────────────────────────────────────────────────────────┘
 
                            ┌─────────────────┐
@@ -424,19 +424,58 @@ GENERATE_SOURCEMAP=false
 git clone <repository>
 cd CoachGPT-Pro
 
-# 2. Start all services with Docker
+# 2. Create environment files for each service
+# And edit the configuration passwords
+
+# Backend + PostgreSQL environment
+cat > backend/.env << 'EOF'
+NODE_ENV=production
+PORT=5002
+DB_HOST=postgres
+DB_NAME=coachgpt
+DB_USER=postgres
+DB_PASSWORD=your_secure_password_here
+JWT_SECRET=your_jwt_secret_here
+CORS_ORIGIN=http://localhost:3001
+POSTGRES_HOST_AUTH_METHOD=md5
+EOF
+
+# LLM service environment
+cat > llm/.env << 'EOF'
+NODE_ENV=development
+PORT=5003
+OLLAMA_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.2:3b
+DEFAULT_TEMPERATURE=0.7
+DEFAULT_MAX_TOKENS=500
+LLM_TIMEOUT=70000
+RATE_LIMIT_MAX_REQUESTS=20
+ALLOWED_ORIGINS=http://localhost:3001,http://localhost:5002
+EOF
+
+# Frontend environment
+cat > frontend/.env << 'EOF'
+NODE_ENV=production
+PORT=3001
+REACT_APP_BACKEND_URL=http://localhost:5002
+REACT_APP_LLM_URL=http://localhost:5003
+TSC_COMPILE_ON_ERROR=true
+GENERATE_SOURCEMAP=false
+EOF
+
+# 3. Start all services with Docker
 docker-compose up -d
 
-# 3. Wait for Ollama to download model (first run only)
+# 4. Wait for Ollama to download model (first run only)
 docker-compose logs -f ollama
 
-# 4. Verify all services are healthy
+# 5. Verify all services are healthy
 # Backend + PostgreSQL
 cd backend && ./test-docker.sh
 # LLM Service + Ollama  
 cd llm && ./test-docker.sh
 
-# 5. Access the application
+# 6. Access the application
 # Frontend: http://localhost:3001
 # Backend API: http://localhost:5002
 # LLM Service: http://localhost:5003
