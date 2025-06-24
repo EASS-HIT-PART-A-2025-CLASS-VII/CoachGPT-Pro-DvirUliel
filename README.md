@@ -30,9 +30,7 @@ git clone https://github.com/EASS-HIT-PART-A-2025-CLASS-VII/CoachGPT-Pro-DvirUli
 cd CoachGPT-Pro-DvirUliel
 
 # Setup environment files (see Configuration section)
-cp backend/.env
-cp llm/.env  
-cp frontend/.env
+cp backend/.env && cp llm/.env && cp frontend/.env
 
 # Start all services
 docker-compose up -d
@@ -106,11 +104,69 @@ Security:     JWT + bcrypt + Helmet + CORS
 ### **Service Responsibilities**
 | Service | Purpose | Technology | Port |
 |---------|---------|------------|------|
-| **Frontend** | User Interface | React + TypeScript | 3001 |
+| **Frontend** | User Interface & UX | React + TypeScript | 3001 |
 | **Backend API** | Business Logic + Auth | Node.js + Express | 5002 |
 | **LLM Service** | AI Chat Interface | Node.js + Ollama | 5003 |
 | **PostgreSQL** | Data Persistence | PostgreSQL 15 | 5433 |
 | **Ollama** | AI Model Engine | llama3.2:3b | 11434 |
+
+---
+
+## 🎨 Frontend Application
+
+### **React TypeScript Interface**
+- **Pages**: Dashboard, Home, Workout Planning, AI Coach, Exercise Library, Plan Archive
+- **State Management**: React hooks with Context API for real-time synchronization
+- **Real-time Features**: Server-sent events for AI chat streaming
+- **Responsive Design**: Mobile-first with Tailwind CSS
+- **UX Features**: Loading states, error handling, instant plan modifications
+
+### **User Experience**
+- **Interactive Plan Management**: Add/swap/remove exercises with live updates
+- **AI Chat Interface**: Streaming responses with typing indicators
+- **Exercise Library**: Advanced filtering by muscle group, difficulty, equipment
+- **Progress Tracking**: Visual plan progression and modification history
+
+---
+
+## 🗄️ Backend & Database Integration
+
+### **Backend Architecture**
+- **MVC Pattern**: Clean Controllers, Services, and Routes organization
+- **Progressive Overload Algorithm**: 4-week cycles with automated progression
+- **Exercise Database**: 105+ exercises across 7 muscle groups with smart categorization
+- **Plan Management**: Real-time modifications with complete audit trail
+
+### **Database Design**
+```sql
+-- Core schema with UUID security and JSONB flexibility
+users (id, email, password_hash, name, created_at)
+exercises (id, name, muscle_group, difficulty, equipment, instructions)  
+workout_plans (id, user_id, name, difficulty, days_per_week, plan_data, created_at)
+plan_actions (id, plan_id, action_type, details, created_at)
+```
+
+### **Key Features**
+- **Progressive Overload**: Week 1 (base) → Week 2 (+2 reps) → Week 3 (+1 set) → Week 4 (peak)
+- **Muscle Split Logic**: Strategic pairing (Chest+Triceps, Back+Biceps, Legs+Core)
+- **Plan Modifications**: Add/Swap/Remove with intelligent rebalancing
+- **Security**: JWT authentication, bcrypt hashing, input validation
+
+---
+
+## 🤖 LLM Service & AI Integration
+
+### **Ollama Integration**
+- **Singleton Architecture**: Single LLMService instance with model warm-up
+- **Streaming Responses**: Real-time AI chat using Server-Sent Events
+- **Model**: llama3.2:3b optimized for fitness coaching conversations
+- **Rate Limiting**: 10 requests/minute with comprehensive health monitoring
+
+### **AI Features**
+- **Context-aware**: Understands fitness terminology and user goals
+- **Health Checks**: Multi-level monitoring (service, Ollama, model availability)
+- **Error Handling**: Robust timeout handling and graceful degradation
+- **Container**: ollama/ollama:latest with persistent model storage
 
 ---
 
@@ -153,71 +209,50 @@ Security:     JWT + bcrypt + Helmet + CORS
 ✅ Total Test Suite:      54 tests passing
 ```
 
-### **Testing Strategy**
-- **Unit Tests**: Individual service components
-- **Integration Tests**: Cross-service communication
-- **Docker Integration**: test-docker.sh scripts in backend and llm directories
-- **Health Checks**: Service availability validation
-- **Container Tests**: Container orchestration verification
-
 ### **Quality Metrics**
 - **TypeScript Coverage**: 100% across all services
 - **Error Handling**: Comprehensive try-catch blocks
-- **Logging**: Structured logging with Winston
 - **Code Organization**: Clean architecture patterns
+- **Health Monitoring**: Multi-level service checks
 
 ---
 
-## 🌐 API Documentation
+---
 
-### **Backend API Service (Port 5002)**
-#### **Authentication Endpoints**
-```http
-POST /auth/register          # User registration
-POST /auth/login             # User authentication  
-DELETE /auth/delete/:userId  # Account deletion
-```
+## 🌐 API Endpoints
 
-#### **Workout Plan Endpoints**
-```http
-POST /plan/generate                    # Create workout plan
-GET /plan/user/:userId                 # Get user's latest plan
-GET /plan/:planId                      # Get specific plan
-PATCH /plan/:planId/swap-exercise      # Swap exercise
-PATCH /plan/:planId/add-exercise       # Add exercise
-PATCH /plan/:planId/delete-exercise    # Remove exercise
-DELETE /plan/:planId/delete-plan       # Delete plan
-GET /plan/:planId/actions              # Plan history
-```
+### **🔧 Backend API Service (Port 5002)**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| **🩺 Health** | GET | `/health` | System health with DB test |
+| | GET | `/ready` | Kubernetes readiness probe |
+| | GET | `/live` | Kubernetes liveness probe |
+| **🔐 Auth** | POST | `/auth/register` | Register new user |
+| | POST | `/auth/login` | User login with JWT |
+| | DELETE | `/auth/delete/:userId` | Delete user account |
+| **🏋️‍♀️ Plans** | POST | `/plan/generate` | Generate AI workout plan |
+| | GET | `/plan/user/:userId` | Get user's latest plan |
+| | GET | `/plan/:planId` | Get specific plan by ID |
+| | PATCH | `/plan/:planId/swap-exercise` | Swap exercise in plan |
+| | PATCH | `/plan/:planId/add-exercise` | Add exercise to plan |
+| | PATCH | `/plan/:planId/delete-exercise` | Remove exercise from plan |
+| | DELETE | `/plan/:planId/delete-plan` | Delete entire plan |
+| | GET | `/plan/:planId/actions` | Get plan action history |
+| **🧠 Exercises** | GET | `/exercises` | Get all available exercises |
 
-#### **Exercise Database**
-```http
-GET /exercises              # All exercises with filtering
-```
-
-#### **Health Monitoring**
-```http
-GET /health                 # System health + DB test
-GET /ready                  # Kubernetes readiness
-GET /live                   # Kubernetes liveness
-```
-
-### **Coaching Service (Port 5003)**
-#### **AI Chat Endpoints**
-```http
-POST /chat                  # AI chat response (JSON)
-POST /chat/stream          # AI chat response (streaming)
-GET /chat/models           # Available models
-```
-
-#### **Service Health**
-```http
-GET /health                # Service health
-GET /health/detailed       # Comprehensive status
-GET /health/dependencies   # Dependencies status
-GET /health/metrics        # Performance metrics
-GET /health/test          # AI generation test
-```
+### **🤖 LLM Service (Port 5003)**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| **💬 Chat** | POST | `/chat` | AI chat response (JSON) |
+| | POST | `/chat/stream` | AI chat response (streaming) |
+| | GET | `/chat/models` | Available Ollama models |
+| **🩺 Health** | GET | `/health` | LLM service health |
+| | GET | `/health/detailed` | Comprehensive status |
+| | GET | `/health/ready` | Readiness probe |
+| | GET | `/health/live` | Liveness probe |
+| | GET | `/health/dependencies` | Service dependencies status |
+| | GET | `/health/metrics` | Performance metrics |
+| | GET | `/health/test` | AI generation test |
 
 ---
 
@@ -265,12 +300,6 @@ CREATE TABLE plan_actions (
 );
 ```
 
-### **Data Relationships**
-- **Users → Plans**: One-to-many relationship
-- **Plans → Actions**: Audit trail for modifications
-- **Exercises**: Standalone library with categorization
-- **JSONB Usage**: Flexible plan data storage
-
 ---
 
 ## 🐳 Docker Deployment
@@ -286,7 +315,7 @@ services:
   ollama:          # AI engine
 ```
 
-### **Development Commands**
+### **Quick Commands**
 ```bash
 # Start all services
 docker-compose up -d
@@ -297,42 +326,42 @@ docker-compose logs -f [service-name]
 # Health checks
 docker-compose ps
 
-# Stop services
-docker-compose down
-
 # Clean rebuild
 docker-compose down -v && docker-compose up -d --build
 ```
-
-### **Production Readiness**
-- ✅ Health checks for all services
-- ✅ Persistent volumes for data
-- ✅ Environment variable configuration
-- ✅ Network isolation
-- ✅ Resource limits defined
 
 ---
 
 ## ⚙️ Configuration
 
-### **Environment Setup**
-Each service uses dedicated environment configuration:
+### **Environment Files Structure**
+Each service uses its own `.env` file for configuration:
 
-#### **Backend Configuration (.env)**
+```
+/CoachGPT-Pro
+├── /backend/.env          # Backend + PostgreSQL config
+├── /llm/.env              # LLM service config  
+├── /frontend/.env         # Frontend config
+└── docker-compose.yml     # Orchestration
+```
+
+### **Backend Service Environment**
 ```env
+# backend/.env
 NODE_ENV=production
 PORT=5002
 DB_HOST=postgres
-DB_NAME=coachgpt
-DB_USER=postgres
-DB_PASSWORD=secure_password_here
+DB_NAME=your_database_name
+DB_USER=your_db_user
+DB_PASSWORD=your_secure_password
 JWT_SECRET=your_jwt_secret_here
 CORS_ORIGIN=http://localhost:3001
 POSTGRES_HOST_AUTH_METHOD=md5
 ```
 
-#### **LLM Service Configuration (.env)**
+### **LLM Service Environment**
 ```env
+# llm/.env
 NODE_ENV=development
 PORT=5003
 OLLAMA_URL=http://localhost:11434
@@ -344,8 +373,9 @@ RATE_LIMIT_MAX_REQUESTS=20
 ALLOWED_ORIGINS=http://localhost:3001,http://localhost:5002
 ```
 
-#### **Frontend Configuration (.env)**
+### **Frontend Service Environment**
 ```env
+# frontend/.env
 NODE_ENV=production
 PORT=3001
 REACT_APP_BACKEND_URL=http://localhost:5002
@@ -354,11 +384,18 @@ TSC_COMPILE_ON_ERROR=true
 GENERATE_SOURCEMAP=false
 ```
 
-### **Security Configuration**
-- 🔒 All sensitive data in environment variables
-- 🛡️ No hardcoded secrets in codebase
-- 🎯 Service isolation with dedicated configs
-- 📝 Example files provided for setup
+### **Docker Configuration**
+```env
+# Docker automatically loads each service's .env file
+# No shared secrets in docker-compose.yml
+# All sensitive data isolated in service-specific .env files
+```
+
+### **Security Notes**
+- 🔒 All `.env` files are git-ignored
+- 🛡️ No hardcoded secrets in docker-compose.yml
+- 🎯 Each service manages its own configuration
+- 📝 Use `.env.example` files for development setup
 
 ---
 
@@ -380,9 +417,7 @@ GENERATE_SOURCEMAP=false
 2. **Environment Setup**
    ```bash
    # Create environment files from examples
-   cp backend/.env
-   cp llm/.env
-   cp frontend/.env
+   cp backend/.env && cp llm/.env && cp frontend/.env
    
    # Edit passwords and secrets in .env files
    nano backend/.env  # Update DB_PASSWORD and JWT_SECRET
@@ -410,19 +445,7 @@ GENERATE_SOURCEMAP=false
 5. **Access Application**
    - Frontend: http://localhost:3001
    - Backend API: http://localhost:5002/health
-   - Coaching Service: http://localhost:5003/health
-
-### **Development Mode**
-```bash
-# Backend development
-cd backend && npm install && npm run dev
-
-# LLM service development  
-cd llm && npm install && npm run dev
-
-# Frontend development
-cd frontend && npm install && npm start
-```
+   - LLM Service: http://localhost:5003/health
 
 ---
 
@@ -445,12 +468,6 @@ cd frontend && npm install && npm start
 - **Graceful Shutdown**: Clean service termination
 - **Error Boundaries**: Comprehensive error handling
 - **Request Validation**: Input sanitization and validation
-
-### **Security Implementation**
-- **JWT Authentication**: Stateless token verification
-- **Rate Limiting**: DDoS protection and resource management
-- **CORS Configuration**: Cross-origin request security
-- **Input Validation**: SQL injection and XSS prevention
 
 ---
 
@@ -483,14 +500,12 @@ cd frontend && npm install && npm start
 - 📱 **Mobile App**: React Native implementation
 - 🔗 **Wearable Integration**: Fitness tracker connectivity
 - 🎯 **Nutrition Tracking**: Meal planning and calorie counting
-- 👥 **Social Features**: Community and sharing capabilities
 
 ### **Technical Roadmap**
 - 🚀 **CI/CD Pipeline**: GitHub Actions implementation
 - 📈 **Monitoring**: Prometheus + Grafana setup
 - 🔒 **Advanced Security**: OAuth2 and 2FA
 - ⚡ **Performance**: Redis caching layer
-- 🌐 **Scalability**: Kubernetes deployment
 
 ---
 
